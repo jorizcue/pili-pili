@@ -471,11 +471,16 @@ function renderBetting(state) {
       if (p.id === state.myId) continue;
       const div = document.createElement('div');
       div.className = 'opponent-hand';
-      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}</div>`;
+      const visibleCards = p.hand || [];
+      const hiddenCount = p.cardCount - visibleCards.length;
+      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)} <small style="color:var(--text-muted)">(${visibleCards.length} visibles, ${hiddenCount} ocultas)</small></div>`;
       const cardsRow = document.createElement('div');
       cardsRow.className = 'hand-area';
-      for (const card of (p.hand || [])) {
+      for (const card of visibleCards) {
         cardsRow.appendChild(makeCardFace(card, false));
+      }
+      for (let i = 0; i < hiddenCount; i++) {
+        cardsRow.appendChild(makeCardBack());
       }
       div.appendChild(cardsRow);
       bettingOpponentsHands.appendChild(div);
@@ -615,35 +620,8 @@ function renderPlaying(state) {
   }
   playersBets.appendChild(chipsRow);
 
-  // Manos Abiertas: mostrar cartas de rivales
-  const rule = state.mission ? state.mission.rule : '';
-  const isTransparent = rule === 'transparent' || rule === 'transparent_lowest';
-  const playingOpponents = document.getElementById('playingOpponents');
-  const playingOpponentsHands = document.getElementById('playingOpponentsHands');
-  if (isTransparent) {
-    playingOpponents.classList.remove('hidden');
-    playingOpponentsHands.innerHTML = '';
-    for (const p of state.players) {
-      if (p.id === state.myId) continue;
-      const div = document.createElement('div');
-      div.className = 'opponent-hand';
-      if (p.isCurrentPlayer) div.classList.add('opponent-current');
-      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}${p.isCurrentPlayer ? ' <span class="turn-arrow">▶</span>' : ''}</div>`;
-      const cardsRow = document.createElement('div');
-      cardsRow.className = 'hand-area';
-      if (p.hand && p.hand.length > 0) {
-        for (const card of p.hand) {
-          cardsRow.appendChild(makeCardFace(card, false));
-        }
-      } else {
-        cardsRow.innerHTML = '<span style="color:var(--text-muted);font-size:13px">Sin cartas</span>';
-      }
-      div.appendChild(cardsRow);
-      playingOpponentsHands.appendChild(div);
-    }
-  } else {
-    playingOpponents.classList.add('hidden');
-  }
+  // Manos Abiertas: durante el juego las cartas de rivales ya no son visibles
+  document.getElementById('playingOpponents').classList.add('hidden');
 
   // My hand
   const isMyTurn = currentPlayer && currentPlayer.id === state.myId;
@@ -713,18 +691,20 @@ function renderRoundEnd(state) {
   // Sort by pilis gained desc for visual impact, but show all
   for (const r of state.roundResults) {
     const tr = document.createElement('tr');
-    const isPerfect = r.pilisGained === 0;
+    const isPerfect = r.pilisGained < 0;
     const piliClass = isPerfect ? 'pilis-zero' : 'pilis-gained';
     const betClass  = isPerfect ? 'perfect-bet' : 'bad-bet';
 
     const totalPlayer = state.players.find(p => p.id === r.id);
     const totalPilis = totalPlayer ? totalPlayer.pilis : r.totalPilis;
 
+    const piliDisplay = isPerfect ? '−1 🎯' : '+' + r.pilisGained + ' 🌶️';
+
     tr.innerHTML = `
       <td style="font-weight:700">${escHtml(r.name)}</td>
       <td class="${betClass}">${r.bet}</td>
       <td>${r.tricksWon}</td>
-      <td class="${piliClass}">${isPerfect ? '✓ 0' : '+' + r.pilisGained + ' 🌶️'}</td>
+      <td class="${piliClass}">${piliDisplay}</td>
       <td>${'🌶️'.repeat(totalPilis) || '0'} ${totalPilis > 0 ? `<small>(${totalPilis})</small>` : ''}</td>
     `;
     tbody.appendChild(tr);

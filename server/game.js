@@ -27,11 +27,11 @@ const MISSIONS = [
   { id: 23, name: "Pasa la Carta",    cardsPerPlayer: 5, rule: 'pass',             desc: '5 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
   { id: 24, name: "¡Pasa al Revés!",  cardsPerPlayer: 3, rule: 'pass_lowest',      desc: '3 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
   { id: 25, name: "¡Pasa al Revés!",  cardsPerPlayer: 4, rule: 'pass_lowest',      desc: '4 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
-  { id: 26, name: "Manos Abiertas",         cardsPerPlayer: 3, rule: 'transparent',       desc: '3 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
-  { id: 27, name: "Manos Abiertas",         cardsPerPlayer: 4, rule: 'transparent',       desc: '4 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
-  { id: 28, name: "Manos Abiertas",         cardsPerPlayer: 5, rule: 'transparent',       desc: '5 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
-  { id: 29, name: "Manos Abiertas al Revés",cardsPerPlayer: 3, rule: 'transparent_lowest',desc: '3 cartas. Todos ven todas las cartas. ¡Gana la más baja!' },
-  { id: 30, name: "Manos Abiertas al Revés",cardsPerPlayer: 4, rule: 'transparent_lowest',desc: '4 cartas. Todos ven todas las cartas. ¡Gana la más baja!' },
+  { id: 26, name: "Manos Abiertas",         cardsPerPlayer: 3, rule: 'transparent',       desc: '3 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
+  { id: 27, name: "Manos Abiertas",         cardsPerPlayer: 4, rule: 'transparent',       desc: '4 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
+  { id: 28, name: "Manos Abiertas",         cardsPerPlayer: 5, rule: 'transparent',       desc: '5 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
+  { id: 29, name: "Manos Abiertas al Revés",cardsPerPlayer: 3, rule: 'transparent_lowest',desc: '3 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más baja!' },
+  { id: 30, name: "Manos Abiertas al Revés",cardsPerPlayer: 4, rule: 'transparent_lowest',desc: '4 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más baja!' },
   { id: 31, name: "A Oscuras",              cardsPerPlayer: 3, rule: 'full_blind',         desc: '3 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
   { id: 32, name: "A Oscuras",              cardsPerPlayer: 4, rule: 'full_blind',         desc: '4 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
   { id: 33, name: "A Oscuras al Revés",     cardsPerPlayer: 3, rule: 'full_blind_lowest',  desc: '3 cartas. Nadie ve sus cartas y gana la más baja. ¡El caos total!' },
@@ -369,8 +369,15 @@ class Game {
 
     for (const p of this.players) {
       const diff = Math.abs((p.bet ?? 0) - p.tricksWon);
-      const pilisGained = isDouble ? diff * 2 : diff;
-      p.pilis += pilisGained;
+      let pilisGained;
+      if (diff === 0) {
+        // Apuesta perfecta: resta 1 pili (mínimo 0)
+        pilisGained = -1;
+        p.pilis = Math.max(0, p.pilis - 1);
+      } else {
+        pilisGained = isDouble ? diff * 2 : diff;
+        p.pilis += pilisGained;
+      }
       results.push({
         id: p.id,
         name: p.name,
@@ -444,8 +451,10 @@ class Game {
       isCurrentBetter: this.state === 'betting' && i === this.currentBetterIndex,
       isCurrentPlayer: this.state === 'playing' && i === this.getCurrentPlayerIndex(),
       connected: p.connected,
-      // Para modo transparente: incluye la mano de los rivales (pero no en full_blind)
-      hand: (isTransparent && i !== myIndex) ? p.hand : undefined,
+      // Para modo transparente: en apuesta muestra mitad de cartas; en juego, ninguna
+      hand: (isTransparent && i !== myIndex && this.state === 'betting')
+        ? p.hand.slice(0, Math.floor(p.hand.length / 2))
+        : undefined,
       // Para fase de pase: indica si este jugador ya eligió
       hasPassed: this.state === 'passing' ? this.passingCards.hasOwnProperty(i) : undefined,
     }));
