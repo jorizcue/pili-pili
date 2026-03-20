@@ -336,6 +336,47 @@ function renderLobby(state) {
     startBtn.classList.add('hidden');
     waitMsg.classList.remove('hidden');
   }
+
+  // Config panel (host only)
+  const configPanel = document.getElementById('configPanel');
+  if (state.myId === state.hostId) {
+    configPanel.classList.remove('hidden');
+    // Fill mode checkboxes if not already done
+    const cfgModes = document.getElementById('cfgModes');
+    if (cfgModes.children.length === 0 && state.modeFamilies) {
+      const enabledFamilies = state.config ? state.config.enabledFamilies : null;
+      for (const fam of state.modeFamilies) {
+        const label = document.createElement('label');
+        label.className = 'config-mode-option';
+        const checked = !enabledFamilies || enabledFamilies.includes(fam.key);
+        label.innerHTML = `<input type="checkbox" name="mode" value="${fam.key}" ${checked ? 'checked' : ''}> ${escHtml(fam.label)}`;
+        cfgModes.appendChild(label);
+      }
+      // Deck size
+      const deckInput = document.getElementById('cfgDeckSize');
+      if (state.config) deckInput.value = state.config.deckSize;
+
+      // Listeners
+      const sendConfig = () => {
+        const deckSize = parseInt(document.getElementById('cfgDeckSize').value, 10) || 55;
+        const boxes = cfgModes.querySelectorAll('input[type=checkbox]');
+        const enabledFamilies = [...boxes].filter(b => b.checked).map(b => b.value);
+        socket.emit('setConfig', { deckSize, enabledFamilies });
+      };
+      document.getElementById('cfgDeckSize').addEventListener('change', sendConfig);
+      cfgModes.addEventListener('change', sendConfig);
+      document.getElementById('cfgSelectAll').addEventListener('click', () => {
+        cfgModes.querySelectorAll('input').forEach(b => b.checked = true);
+        sendConfig();
+      });
+      document.getElementById('cfgSelectNone').addEventListener('click', () => {
+        cfgModes.querySelectorAll('input').forEach(b => b.checked = false);
+        sendConfig();
+      });
+    }
+  } else {
+    configPanel.classList.add('hidden');
+  }
 }
 
 document.getElementById('startGameBtn').addEventListener('click', () => {
@@ -376,6 +417,11 @@ function renderPassing(state) {
   const handArea     = document.getElementById('passingHand');
   const playersStatus = document.getElementById('passPlayersStatus');
 
+  // Instrucción dinámica con conteo
+  instructionEl.querySelector('p').innerHTML =
+    `👈 Elige <strong>${passPhase.passCount}</strong> carta(s) para pasar al jugador de tu <strong>izquierda</strong>
+     <br><small style="color:var(--text-muted)">${passPhase.myPassedCount}/${passPhase.passCount} elegidas</small>`;
+
   // Progreso general
   progressEl.textContent = `${passPhase.passedCount} de ${passPhase.totalPlayers} jugadores han elegido`;
 
@@ -393,13 +439,13 @@ function renderPassing(state) {
 
   if (passPhase.myHasPassed) {
     // Ya elegí — mostrar espera
-    statusEl.innerHTML = '<span class="pass-ready">✅ ¡Carta enviada!</span>';
+    statusEl.innerHTML = '<span class="pass-ready">✅ ¡Carta(s) enviada(s)!</span>';
     instructionEl.classList.add('hidden');
     handArea.innerHTML = '';
     waitingEl.classList.remove('hidden');
   } else {
     // Aún no elijo — mostrar mis cartas
-    statusEl.innerHTML = '<span class="current-better">¡Elige la carta que quieres pasar!</span>';
+    statusEl.innerHTML = '<span class="current-better">¡Elige la(s) carta(s) que quieres pasar!</span>';
     instructionEl.classList.remove('hidden');
     waitingEl.classList.add('hidden');
     handArea.innerHTML = '';
@@ -460,11 +506,18 @@ function renderBetting(state) {
     }
   }
 
-  // Manos Abiertas: mostrar cartas de rivales también en la apuesta
+  // El Indio: show a card back for own hand in betting phase
+  if (state.isIndian) {
+    handArea.innerHTML = '';
+    handArea.appendChild(makeCardBack());
+  }
+
+  // Manos Abiertas o El Indio: mostrar cartas de rivales también en la apuesta
   const isTransparent = mission.rule === 'transparent' || mission.rule === 'transparent_lowest';
   const bettingOpponents = document.getElementById('bettingOpponents');
   const bettingOpponentsHands = document.getElementById('bettingOpponentsHands');
-  if (isTransparent) {
+
+  if (isTransparent || state.isIndian) {
     bettingOpponents.classList.remove('hidden');
     bettingOpponentsHands.innerHTML = '';
     for (const p of state.players) {
@@ -472,17 +525,30 @@ function renderBetting(state) {
       const div = document.createElement('div');
       div.className = 'opponent-hand';
       const visibleCards = p.hand || [];
-      const hiddenCount = p.cardCount - visibleCards.length;
-      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)} <small style="color:var(--text-muted)">(${visibleCards.length} visibles, ${hiddenCount} ocultas)</small></div>`;
-      const cardsRow = document.createElement('div');
-      cardsRow.className = 'hand-area';
-      for (const card of visibleCards) {
-        cardsRow.appendChild(makeCardFace(card, false));
+
+      if (isTransparent) {
+        const hiddenCount = p.cardCount - visibleCards.length;
+        div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)} <small style="color:var(--text-muted)">(${visibleCards.length} visibles, ${hiddenCount} ocultas)</small></div>`;
+        const cardsRow = document.createElement('div');
+        cardsRow.className = 'hand-area';
+        for (const card of visibleCards) {
+          cardsRow.appendChild(makeCardFace(card, false));
+        }
+        for (let i = 0; i < hiddenCount; i++) {
+          cardsRow.appendChild(makeCardBack());
+        }
+        div.appendChild(cardsRow);
+      } else {
+        // El Indio: show full hand
+        div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}</div>`;
+        const cardsRow = document.createElement('div');
+        cardsRow.className = 'hand-area';
+        for (const card of visibleCards) {
+          cardsRow.appendChild(makeCardFace(card, false));
+        }
+        div.appendChild(cardsRow);
       }
-      for (let i = 0; i < hiddenCount; i++) {
-        cardsRow.appendChild(makeCardBack());
-      }
-      div.appendChild(cardsRow);
+
       bettingOpponentsHands.appendChild(div);
     }
   } else {
@@ -620,14 +686,53 @@ function renderPlaying(state) {
   }
   playersBets.appendChild(chipsRow);
 
-  // Manos Abiertas: durante el juego las cartas de rivales ya no son visibles
+  // Hide opponents section by default
   document.getElementById('playingOpponents').classList.add('hidden');
+
+  // Show opponents if server sent their hands (e.g. El Indio mode)
+  const anyOpponentHasHand = state.players.some(p => p.id !== state.myId && p.hand && p.hand.length > 0);
+  const playingOpponents = document.getElementById('playingOpponents');
+  const playingOpponentsHands = document.getElementById('playingOpponentsHands');
+  if (anyOpponentHasHand) {
+    playingOpponents.classList.remove('hidden');
+    playingOpponentsHands.innerHTML = '';
+    for (const p of state.players) {
+      if (p.id === state.myId) continue;
+      const div = document.createElement('div');
+      div.className = 'opponent-hand';
+      if (p.isCurrentPlayer) div.classList.add('opponent-current');
+      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}${p.isCurrentPlayer ? ' <span class="turn-arrow">▶</span>' : ''}</div>`;
+      const cardsRow = document.createElement('div');
+      cardsRow.className = 'hand-area';
+      for (const card of (p.hand || [])) {
+        cardsRow.appendChild(makeCardFace(card, false));
+      }
+      div.appendChild(cardsRow);
+      playingOpponentsHands.appendChild(div);
+    }
+  }
 
   // My hand
   const isMyTurn = currentPlayer && currentPlayer.id === state.myId;
   const handArea = document.getElementById('playingHand');
   handArea.innerHTML = '';
   const playHint = document.getElementById('playHint');
+
+  // El Indio: can't see own card, show a back
+  if (state.isIndian) {
+    const backEl = makeCardBack();
+    handArea.appendChild(backEl);
+    if (isMyTurn) {
+      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Juega tu carta (¡no sabes cuál es!)</span>';
+      backEl.classList.add('playable-back');
+      backEl.addEventListener('click', () => playCard(0));
+    } else if (currentPlayer) {
+      playHint.textContent = `Esperando a ${currentPlayer.name}...`;
+    } else {
+      playHint.textContent = '';
+    }
+    return; // don't proceed to normal rendering
+  }
 
   if (state.isFullBlind) {
     // Modo A Oscuras: mostrar dorsos de carta en lugar de caras
@@ -762,7 +867,7 @@ function makeCardFace(card, playable) {
 
   if (card.isWild) {
     el.innerHTML = `
-      <div class="card-wild-icon">🃏</div>
+      <div class="card-wild-icon">🌶️</div>
       <div class="card-wild-label">Comodín</div>
     `;
   } else {

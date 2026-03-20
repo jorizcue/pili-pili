@@ -251,24 +251,74 @@ input[type="text"]::placeholder {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px 24px;
+  width: 100%;
 }
 
-.rules-summary h3 {
-  color: var(--accent-gold);
-  margin-bottom: 12px;
+.rules-summary details {
+  width: 100%;
+}
+
+.rules-summary-title {
   font-size: 16px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.rules-summary ul {
+.rules-summary-title::-webkit-details-marker { display: none; }
+.rules-summary-title::before { content: '▶'; font-size: 12px; transition: transform 0.2s; }
+details[open] .rules-summary-title::before { transform: rotate(90deg); }
+
+.rules-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.rules-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.rules-section ul {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.rules-summary li {
-  font-size: 14px;
+.rules-section ul li {
+  font-size: 13px;
   color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.modes-list li {
+  align-items: center;
+}
+
+.mode-badge {
+  background: rgba(192, 57, 43, 0.15);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  color: var(--accent-orange);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* =========================================
@@ -862,10 +912,14 @@ input[type="text"]::placeholder {
 }
 
 .card-face.wild {
-  background: linear-gradient(135deg, #fff9f0, #fff);
-  border-color: var(--accent-gold);
-  box-shadow: 0 3px 12px rgba(243, 156, 18, 0.4);
-  color: var(--accent-gold);
+  background: linear-gradient(135deg, #fffde7, #fff9c4);
+  border-color: #f9a825;
+  box-shadow: 0 3px 12px rgba(249, 168, 37, 0.5);
+  color: #f57f17;
+}
+
+.card-face.wild .card-wild-icon {
+  filter: hue-rotate(60deg) brightness(1.15) saturate(1.5);
 }
 
 .card-face.playable {
@@ -1161,6 +1215,11 @@ input[type="text"]::placeholder {
   .lobby-box, .round-end-box, .game-end-box {
     padding: 20px 16px;
   }
+  #playingSection { display: flex; flex-direction: column; }
+  #playingSection .trick-area { order: 1; }
+  #playingSection .hand-section { order: 2; }
+  #playingSection .players-bets { order: 3; }
+  #playingSection .opponents-section { order: 4; }
 }
 
 @media (max-width: 480px) {
@@ -1358,4 +1417,106 @@ input[type="text"]::placeholder {
 
 .opponents-section .card-wild-icon {
   font-size: 22px;
+}
+
+/* =========================================
+   CONFIG PANEL (Lobby)
+   ========================================= */
+
+.config-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.config-input {
+  width: 100px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.config-input:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.config-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.config-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+  color: var(--text-secondary);
+}
+
+.config-mode-option:has(input:checked) {
+  border-color: var(--green);
+  color: var(--green-bright);
+  background: rgba(39, 174, 96, 0.08);
+}
+
+.config-mode-option input {
+  accent-color: var(--green);
+}
+
+.config-modes-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.btn-ghost:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
 }

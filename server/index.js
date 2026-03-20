@@ -4,7 +4,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const { Game } = require('./game');
+const { Game, MODE_FAMILIES, RULE_FAMILY } = require('./game');
 
 const app = express();
 const server = http.createServer(app);
@@ -123,7 +123,17 @@ io.on('connection', (socket) => {
     console.log(`[Room] ${playerName} reconnected to ${rid}`);
   });
 
+  socket.on('setConfig', ({ deckSize, enabledFamilies }) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    const { room, roomId, playerId } = found;
+    if (room.game.hostId !== playerId) return socket.emit('error', { message: 'Solo el anfitrión puede configurar' });
+    room.game.setConfig({ deckSize, enabledFamilies });
+    broadcastState(room, roomId);
+  });
+
   socket.on('startGame', () => {
+    // config already set via setConfig events; just start
     const found = findRoomBySocket(socket.id);
     if (!found) return socket.emit('error', { message: 'No estás en una sala' });
     const { room, roomId, playerId } = found;

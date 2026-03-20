@@ -57,14 +57,44 @@
     </div>
 
     <div class="rules-summary">
-      <h3>¿Cómo se juega?</h3>
-      <ul>
-        <li>🃏 Baraja de 56 cartas (1–55 + Comodín)</li>
-        <li>🎯 Apuesta cuántos trucos ganarás cada ronda</li>
-        <li>🌶️ Cada error suma chiles (pilis)</li>
-        <li>🏆 El primero en llegar a 7 pilis pierde</li>
-        <li>⚠️ Misiones especiales cambian las reglas cada ronda</li>
-      </ul>
+      <details open>
+        <summary class="rules-summary-title">¿Cómo se juega?</summary>
+        <div class="rules-body">
+          <div class="rules-section">
+            <h4>Reglas básicas</h4>
+            <ul>
+              <li>🃏 Baraja de 56 cartas (1–55 + Comodín amarillo)</li>
+              <li>🎯 Cada ronda: apuesta cuántos trucos ganarás</li>
+              <li>⚠️ La suma total de apuestas NO puede ser igual al número de cartas</li>
+              <li>✅ Acertar la apuesta: <strong>−1 pili</strong> (mínimo 0)</li>
+              <li>❌ Fallar la apuesta: +1 pili por cada truco de diferencia</li>
+              <li>💀 El primero en llegar a 7 pilis pierde</li>
+              <li>🏆 El jugador con menos pilis al final gana</li>
+            </ul>
+          </div>
+          <div class="rules-section">
+            <h4>Modos de juego</h4>
+            <ul class="modes-list">
+              <li><span class="mode-badge">Normal</span> Gana la carta más alta</li>
+              <li><span class="mode-badge">Al Revés</span> Gana la carta más baja</li>
+              <li><span class="mode-badge">A Ciegas</span> Apuestas antes de ver tus cartas</li>
+              <li><span class="mode-badge">Doble Pili</span> Cada error suma el doble</li>
+              <li><span class="mode-badge">Comodín Pierde</span> El comodín es la carta más baja</li>
+              <li><span class="mode-badge">Pasa la Carta</span> Apuesta, luego pasa carta(s) al vecino</li>
+              <li><span class="mode-badge">Manos Abiertas</span> Ves la mitad de las cartas de tus rivales al apostar</li>
+              <li><span class="mode-badge">A Oscuras</span> Nadie ve ninguna carta</li>
+              <li><span class="mode-badge">El Indio</span> 1 carta: ves las cartas de todos excepto la tuya</li>
+            </ul>
+          </div>
+          <div class="rules-section">
+            <h4>Opciones de partida (al crear sala)</h4>
+            <ul>
+              <li>🃏 <strong>Tamaño de baraja:</strong> elige cuántas cartas numéricas (10–99, + comodín)</li>
+              <li>🎮 <strong>Modos de juego:</strong> activa o desactiva familias de misiones</li>
+            </ul>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 

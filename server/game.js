@@ -22,11 +22,11 @@ const MISSIONS = [
   { id: 19, name: "Ciegas al Revés",  cardsPerPlayer: 4, rule: 'blind_lowest',     desc: '4 cartas. Apuesta sin ver. Gana la más baja.' },
   { id: 20, name: "Comodín Pierde",   cardsPerPlayer: 4, rule: 'joker_loses',      desc: '4 cartas. El comodín es la carta más baja.' },
   // --- Nuevos modos ---
-  { id: 21, name: "Pasa la Carta",    cardsPerPlayer: 3, rule: 'pass',             desc: '3 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
-  { id: 22, name: "Pasa la Carta",    cardsPerPlayer: 4, rule: 'pass',             desc: '4 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
-  { id: 23, name: "Pasa la Carta",    cardsPerPlayer: 5, rule: 'pass',             desc: '5 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
-  { id: 24, name: "¡Pasa al Revés!",  cardsPerPlayer: 3, rule: 'pass_lowest',      desc: '3 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
-  { id: 25, name: "¡Pasa al Revés!",  cardsPerPlayer: 4, rule: 'pass_lowest',      desc: '4 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
+  { id: 21, name: "Pasa la Carta",    cardsPerPlayer: 3, rule: 'pass',             desc: '3 cartas. ¡Elige carta(s) para pasar al jugador de tu izquierda!' },
+  { id: 22, name: "Pasa la Carta",    cardsPerPlayer: 4, rule: 'pass',             desc: '4 cartas. ¡Elige carta(s) para pasar al jugador de tu izquierda!' },
+  { id: 23, name: "Pasa la Carta",    cardsPerPlayer: 5, rule: 'pass',             desc: '5 cartas. ¡Elige carta(s) para pasar al jugador de tu izquierda!' },
+  { id: 24, name: "¡Pasa al Revés!",  cardsPerPlayer: 3, rule: 'pass_lowest',      desc: '3 cartas. Pasa carta(s) al vecino. ¡Gana la carta más baja!' },
+  { id: 25, name: "¡Pasa al Revés!",  cardsPerPlayer: 4, rule: 'pass_lowest',      desc: '4 cartas. Pasa carta(s) al vecino. ¡Gana la carta más baja!' },
   { id: 26, name: "Manos Abiertas",         cardsPerPlayer: 3, rule: 'transparent',       desc: '3 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
   { id: 27, name: "Manos Abiertas",         cardsPerPlayer: 4, rule: 'transparent',       desc: '4 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
   { id: 28, name: "Manos Abiertas",         cardsPerPlayer: 5, rule: 'transparent',       desc: '5 cartas. Al apostar ves la mitad de las cartas de cada rival. ¡Gana la más alta!' },
@@ -35,7 +35,37 @@ const MISSIONS = [
   { id: 31, name: "A Oscuras",              cardsPerPlayer: 3, rule: 'full_blind',         desc: '3 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
   { id: 32, name: "A Oscuras",              cardsPerPlayer: 4, rule: 'full_blind',         desc: '4 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
   { id: 33, name: "A Oscuras al Revés",     cardsPerPlayer: 3, rule: 'full_blind_lowest',  desc: '3 cartas. Nadie ve sus cartas y gana la más baja. ¡El caos total!' },
+  { id: 34, name: "El Indio",               cardsPerPlayer: 1, rule: 'indian',             desc: '1 carta. Ves las cartas de todos menos la tuya propia. ¡Adivina tu propio valor!' },
 ];
+
+const MODE_FAMILIES = {
+  normal:       'Normal',
+  lowest:       'Al Revés',
+  blind:        'A Ciegas',
+  double:       'Doble Pili',
+  joker_loses:  'Comodín Pierde',
+  pass:         'Pasa la Carta',
+  transparent:  'Manos Abiertas',
+  full_blind:   'A Oscuras',
+  indian:       'El Indio',
+};
+
+// Map rule → family key
+const RULE_FAMILY = {
+  normal:             'normal',
+  lowest:             'lowest',
+  blind:              'blind',
+  blind_lowest:       'blind',
+  double:             'double',
+  joker_loses:        'joker_loses',
+  pass:               'pass',
+  pass_lowest:        'pass',
+  transparent:        'transparent',
+  transparent_lowest: 'transparent',
+  full_blind:         'full_blind',
+  full_blind_lowest:  'full_blind',
+  indian:             'indian',
+};
 
 function shuffle(arr) {
   const a = [...arr];
@@ -46,12 +76,12 @@ function shuffle(arr) {
   return a;
 }
 
-function createDeck() {
+function createDeck(deckSize = 55) {
   const cards = [];
-  for (let i = 1; i <= 55; i++) {
+  for (let i = 1; i <= deckSize; i++) {
     cards.push({ value: i, isWild: false });
   }
-  cards.push({ value: 56, isWild: true });
+  cards.push({ value: deckSize + 1, isWild: true }); // wild is always highest
   return cards;
 }
 
@@ -71,7 +101,7 @@ class Game {
     this.hostId = null;
     this.dealerIndex = 0;
     this.round = 0;
-    this.missions = shuffle([...MISSIONS]);
+    this.missions = [];
     this.mission = null;
     this.currentTrick = [];
     this.trickLeaderIndex = 0;
@@ -79,7 +109,22 @@ class Game {
     this.roundResults = [];
     this.winner = null;
     this.isBlindPhase = false;
-    this.passingCards = {}; // playerIndex -> card chosen to pass
+    this.passingCards = {}; // playerIndex -> array of cards chosen to pass
+    this.passCount = 0;
+    this.config = {
+      deckSize: 55,        // number of numbered cards (+ 1 wild always added)
+      enabledFamilies: null, // null = all enabled
+    };
+  }
+
+  setConfig(config) {
+    if (this.state !== 'lobby') return;
+    if (typeof config.deckSize === 'number') {
+      this.config.deckSize = Math.max(10, Math.min(99, Math.floor(config.deckSize)));
+    }
+    if (Array.isArray(config.enabledFamilies)) {
+      this.config.enabledFamilies = config.enabledFamilies;
+    }
   }
 
   addPlayer(id, name) {
@@ -165,6 +210,18 @@ class Game {
 
   startGame() {
     if (this.players.length < 2) return { success: false, error: 'Se necesitan al menos 2 jugadores' };
+
+    // Filter missions by enabled families
+    let pool = MISSIONS;
+    if (this.config.enabledFamilies && this.config.enabledFamilies.length > 0) {
+      pool = MISSIONS.filter(m => {
+        const fam = RULE_FAMILY[m.rule];
+        return this.config.enabledFamilies.includes(fam);
+      });
+      if (pool.length === 0) pool = MISSIONS; // fallback
+    }
+    this.missions = shuffle([...pool]);
+
     this.state = 'playing'; // transitional
     this.dealerIndex = 0;
     this.round = 0;
@@ -180,8 +237,9 @@ class Game {
 
     const numPlayers = this.players.length;
     let cpp = this.mission.cardsPerPlayer;
-    if (cpp * numPlayers > 56) {
-      cpp = Math.floor(56 / numPlayers);
+    const totalCards = this.config.deckSize + 1; // numbered + wild
+    if (cpp * numPlayers > totalCards) {
+      cpp = Math.floor(totalCards / numPlayers);
     }
     this.mission = { ...this.mission, cardsPerPlayer: cpp };
 
@@ -192,7 +250,7 @@ class Game {
       p.hand = [];
     }
 
-    const deck = shuffle(createDeck());
+    const deck = shuffle(createDeck(this.config.deckSize));
     for (let i = 0; i < cpp; i++) {
       for (const p of this.players) {
         p.hand.push(deck.pop());
@@ -208,6 +266,16 @@ class Game {
 
     this.isBlindPhase = isBlind;
     this.passingCards = {};
+
+    // Determine how many cards to pass (random count)
+    const isPass = this.mission.rule === 'pass' || this.mission.rule === 'pass_lowest';
+    if (isPass) {
+      const maxPass = Math.max(1, Math.floor(cpp / 2));
+      this.passCount = Math.floor(Math.random() * maxPass) + 1;
+    } else {
+      this.passCount = 0;
+    }
+
     this.state = 'betting'; // siempre se apuesta primero
 
     return { success: true };
@@ -217,8 +285,15 @@ class Game {
     if (this.state !== 'passing') return { success: false, error: 'No es momento de pasar cartas' };
     const playerIndex = this.players.findIndex(p => p.id === playerId);
     if (playerIndex === -1) return { success: false, error: 'Jugador no encontrado' };
-    if (this.passingCards.hasOwnProperty(playerIndex)) {
-      return { success: false, error: 'Ya has elegido la carta a pasar' };
+
+    // Initialize array for this player
+    if (!Array.isArray(this.passingCards[playerIndex])) {
+      this.passingCards[playerIndex] = [];
+    }
+    const chosen = this.passingCards[playerIndex];
+
+    if (chosen.length >= this.passCount) {
+      return { success: false, error: `Ya has elegido ${this.passCount} carta(s)` };
     }
 
     const player = this.players[playerIndex];
@@ -226,20 +301,24 @@ class Game {
       return { success: false, error: 'Índice de carta inválido' };
     }
 
-    // Remove the chosen card from hand and store it
     const card = player.hand.splice(cardIndex, 1)[0];
-    this.passingCards[playerIndex] = card;
+    chosen.push(card);
 
-    // Check if all players have chosen
-    if (Object.keys(this.passingCards).length === this.players.length) {
-      // Simultaneously pass each card to the player on the left (next index)
+    // Check if all players have finished choosing
+    const allDone = this.players.every((_, i) =>
+      Array.isArray(this.passingCards[i]) && this.passingCards[i].length >= this.passCount
+    );
+
+    if (allDone) {
       const n = this.players.length;
       for (let i = 0; i < n; i++) {
         const recipient = (i + 1) % n;
-        this.players[recipient].hand.push(this.passingCards[i]);
+        for (const c of this.passingCards[i]) {
+          this.players[recipient].hand.push(c);
+        }
       }
       this.passingCards = {};
-      this.state = 'playing'; // después del pase → a jugar
+      this.state = 'playing';
       return { success: true, allPassed: true };
     }
 
@@ -342,7 +421,7 @@ class Game {
       if (lowestWins) {
         if (cVal < wVal) winnerEntry = challenger;
       } else {
-        // Highest wins (normal, blind, double, joker_loses, pass, transparent, full_blind)
+        // Highest wins (normal, blind, double, joker_loses, pass, transparent, full_blind, indian)
         if (cVal > wVal) winnerEntry = challenger;
       }
     }
@@ -439,6 +518,7 @@ class Game {
     const rule = this.mission ? this.mission.rule : null;
     const isTransparent = rule === 'transparent' || rule === 'transparent_lowest';
     const isFullBlind   = rule === 'full_blind'  || rule === 'full_blind_lowest';
+    const isIndian      = rule === 'indian';
 
     const playersInfo = this.players.map((p, i) => ({
       id: p.id,
@@ -451,17 +531,22 @@ class Game {
       isCurrentBetter: this.state === 'betting' && i === this.currentBetterIndex,
       isCurrentPlayer: this.state === 'playing' && i === this.getCurrentPlayerIndex(),
       connected: p.connected,
-      // Para modo transparente: en apuesta muestra mitad de cartas; en juego, ninguna
+      // Para modo transparente: en apuesta muestra mitad aleatoria; en juego, ninguna
+      // Para modo indio: muestra carta completa del oponente (en apuesta Y en juego)
       hand: (isTransparent && i !== myIndex && this.state === 'betting')
-        ? p.hand.slice(0, Math.floor(p.hand.length / 2))
+        ? shuffle([...p.hand]).slice(0, Math.floor(p.hand.length / 2))
+        : (isIndian && i !== myIndex)
+        ? p.hand
         : undefined,
-      // Para fase de pase: indica si este jugador ya eligió
-      hasPassed: this.state === 'passing' ? this.passingCards.hasOwnProperty(i) : undefined,
+      // Para fase de pase: indica si este jugador ya eligió todas sus cartas
+      hasPassed: this.state === 'passing'
+        ? (Array.isArray(this.passingCards[i]) && this.passingCards[i].length >= this.passCount)
+        : undefined,
     }));
 
-    // myCards vacío si: fase ciega de apuesta O si es full_blind (siempre ocultas)
+    // myCards vacío si: fase ciega de apuesta O si es full_blind (siempre ocultas) O si es indian (no ves tu propia carta)
     let myCards = [];
-    if (player && !isBlind && !isFullBlind) {
+    if (player && !isBlind && !isFullBlind && !isIndian) {
       myCards = player.hand;
     }
 
@@ -481,9 +566,12 @@ class Game {
     // Info de la fase de pase
     let passPhase = null;
     if (this.state === 'passing') {
+      const myChosen = Array.isArray(this.passingCards[myIndex]) ? this.passingCards[myIndex].length : 0;
       passPhase = {
-        myHasPassed: this.passingCards.hasOwnProperty(myIndex),
-        passedCount: Object.keys(this.passingCards).length,
+        myHasPassed: myChosen >= this.passCount,
+        myPassedCount: myChosen,
+        passCount: this.passCount,
+        passedCount: this.players.filter((_, i) => Array.isArray(this.passingCards[i]) && this.passingCards[i].length >= this.passCount).length,
         totalPlayers: this.players.length,
       };
     }
@@ -508,11 +596,14 @@ class Game {
       hostId: this.hostId,
       isBlindPhase: isBlind,
       isFullBlind,
+      isIndian,
       myIndex,
       passPhase,
       forbiddenBet,
+      config: this.config,
+      modeFamilies: Object.keys(MODE_FAMILIES).map(k => ({ key: k, label: MODE_FAMILIES[k] })),
     };
   }
 }
 
-module.exports = { Game };
+module.exports = { Game, MODE_FAMILIES, RULE_FAMILY };
