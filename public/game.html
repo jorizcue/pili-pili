@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pili Pili 🌶️ — Partida</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="game-body">
+
+  <!-- Header -->
+  <header class="game-header">
+    <div class="header-left">
+      <span class="header-logo">🌶️ Pili Pili</span>
+      <span class="header-room" id="headerRoom"></span>
+    </div>
+    <div class="header-right">
+      <span class="header-player" id="headerPlayer"></span>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="game-layout">
+
+    <!-- Sidebar: scores -->
+    <aside class="score-sidebar" id="scoreSidebar">
+      <h3 class="sidebar-title">Marcador</h3>
+      <div id="scoreList"></div>
+    </aside>
+
+    <!-- Main area -->
+    <main class="game-main" id="gameMain">
+
+      <!-- LOBBY STATE -->
+      <div class="game-section hidden" id="lobbySection">
+        <div class="lobby-box">
+          <h2>Sala <span id="lobbyRoomCode"></span></h2>
+          <p class="lobby-share">Comparte este código con tus amigos para que se unan</p>
+          <div class="copy-row">
+            <span class="copy-code" id="lobbyCopyCode"></span>
+            <button class="btn btn-sm" id="copyLinkBtn">Copiar enlace</button>
+          </div>
+          <div class="lobby-players" id="lobbyPlayers"></div>
+          <p class="lobby-hint">Se necesitan entre 2 y 8 jugadores</p>
+          <button class="btn btn-primary btn-large hidden" id="startGameBtn">¡Iniciar Partida!</button>
+          <p class="lobby-wait hidden" id="lobbyWait">Esperando al anfitrión...</p>
+        </div>
+      </div>
+
+      <!-- BETTING STATE -->
+      <div class="game-section hidden" id="bettingSection">
+        <div class="mission-banner" id="missionBanner">
+          <div class="mission-name" id="missionName"></div>
+          <div class="mission-desc" id="missionDesc"></div>
+        </div>
+
+        <div class="round-info" id="roundInfo"></div>
+
+        <div class="betting-area">
+          <div class="betting-status" id="bettingStatus"></div>
+
+          <div class="hand-area" id="bettingHand">
+            <!-- Cards shown or backs if blind -->
+          </div>
+
+          <div class="bet-control hidden" id="betControl">
+            <h3>Tu apuesta</h3>
+            <div class="bet-selector">
+              <button class="bet-btn" id="betDown">−</button>
+              <span class="bet-value" id="betValue">0</span>
+              <button class="bet-btn" id="betUp">+</button>
+            </div>
+            <p class="bet-hint" id="betHint"></p>
+            <button class="btn btn-primary" id="confirmBetBtn">Confirmar apuesta</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAYING STATE -->
+      <div class="game-section hidden" id="playingSection">
+        <div class="mission-banner small" id="playMissionBanner">
+          <div class="mission-name" id="playMissionName"></div>
+          <div class="mission-desc small" id="playMissionDesc"></div>
+        </div>
+
+        <div class="trick-area">
+          <h3 class="trick-title">Truco actual</h3>
+          <div class="trick-cards" id="trickCards"></div>
+          <div class="trick-status" id="trickStatus"></div>
+        </div>
+
+        <div class="players-bets" id="playersBets"></div>
+
+        <div class="hand-section">
+          <h3 class="hand-title">Tu mano</h3>
+          <div class="hand-area" id="playingHand"></div>
+          <p class="play-hint" id="playHint"></p>
+        </div>
+      </div>
+
+      <!-- ROUND END STATE -->
+      <div class="game-section hidden" id="roundEndSection">
+        <div class="round-end-box">
+          <h2>🏁 Fin de la Ronda</h2>
+          <div class="results-table-wrap">
+            <table class="results-table" id="resultsTable">
+              <thead>
+                <tr>
+                  <th>Jugador</th>
+                  <th>Apuesta</th>
+                  <th>Trucos</th>
+                  <th>Pilis +</th>
+                  <th>Total 🌶️</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-primary btn-large hidden" id="nextRoundBtn">Siguiente Ronda →</button>
+          <p class="lobby-wait hidden" id="roundWait">Esperando al anfitrión...</p>
+        </div>
+      </div>
+
+      <!-- GAME END STATE -->
+      <div class="game-section hidden" id="gameEndSection">
+        <div class="game-end-box">
+          <div class="winner-trophy">🏆</div>
+          <h2 class="winner-title">¡Partida Terminada!</h2>
+          <p class="winner-name" id="winnerName"></p>
+          <div class="final-scores" id="finalScores"></div>
+          <button class="btn btn-secondary" onclick="window.location.href='/'">Volver al inicio</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>

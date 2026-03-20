@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(timeout 5 node server/index.js)",
+      "Bash(node -e \"require\\(''./server/game.js''\\); console.log\\(''game.js OK''\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(pkill -f \"node server/index.js\")"
+    ]
+  }
+}

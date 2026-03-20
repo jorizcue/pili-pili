@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pili Pili 🌶️</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="landing-body">
+  <div class="landing-container">
+    <div class="logo-area">
+      <div class="logo-icon">🌶️</div>
+      <h1 class="logo-title">Pili Pili</h1>
+      <p class="logo-subtitle">El juego de cartas más picante</p>
+    </div>
+
+    <div class="card-panel">
+      <div class="form-group">
+        <label for="playerName">Tu nombre</label>
+        <input
+          type="text"
+          id="playerName"
+          placeholder="¿Cómo te llamas?"
+          maxlength="20"
+          autocomplete="off"
+          autofocus
+        />
+      </div>
+
+      <div class="actions-split">
+        <div class="action-block">
+          <h2>Crear sala</h2>
+          <p class="action-desc">Empieza una nueva partida y comparte el código con tus amigos.</p>
+          <button class="btn btn-primary" id="createBtn">Crear sala</button>
+        </div>
+
+        <div class="divider-v"></div>
+
+        <div class="action-block">
+          <h2>Unirse a sala</h2>
+          <p class="action-desc">Introduce el código de 4 letras para unirte a una partida.</p>
+          <div class="join-row">
+            <input
+              type="text"
+              id="roomCode"
+              placeholder="ABCD"
+              maxlength="4"
+              autocomplete="off"
+              class="room-code-input"
+            />
+            <button class="btn btn-secondary" id="joinBtn">Unirse</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="errorMsg" class="error-msg hidden"></div>
+    </div>
+
+    <div class="rules-summary">
+      <h3>¿Cómo se juega?</h3>
+      <ul>
+        <li>🃏 Baraja de 56 cartas (1–55 + Comodín)</li>
+        <li>🎯 Apuesta cuántos trucos ganarás cada ronda</li>
+        <li>🌶️ Cada error suma chiles (pilis)</li>
+        <li>🏆 El primero en llegar a 7 pilis pierde</li>
+        <li>⚠️ Misiones especiales cambian las reglas cada ronda</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const createBtn = document.getElementById('createBtn');
+    const joinBtn = document.getElementById('joinBtn');
+    const playerNameInput = document.getElementById('playerName');
+    const roomCodeInput = document.getElementById('roomCode');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Pre-fill room code from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRoom = urlParams.get('room');
+    if (urlRoom) roomCodeInput.value = urlRoom.toUpperCase();
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.remove('hidden');
+      setTimeout(() => errorMsg.classList.add('hidden'), 4000);
+    }
+
+    function getPlayerName() {
+      const name = playerNameInput.value.trim();
+      if (!name) { showError('Ingresa tu nombre primero'); return null; }
+      return name;
+    }
+
+    createBtn.addEventListener('click', () => {
+      const name = getPlayerName();
+      if (!name) return;
+      sessionStorage.setItem('playerName', name);
+      sessionStorage.setItem('action', 'create');
+      window.location.href = '/game';
+    });
+
+    joinBtn.addEventListener('click', () => {
+      const name = getPlayerName();
+      if (!name) return;
+      const code = roomCodeInput.value.trim().toUpperCase();
+      if (code.length !== 4) { showError('El código de sala debe tener 4 letras'); return; }
+      sessionStorage.setItem('playerName', name);
+      sessionStorage.setItem('roomCode', code);
+      sessionStorage.setItem('action', 'join');
+      window.location.href = `/game?room=${code}`;
+    });
+
+    roomCodeInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    playerNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') createBtn.click();
+    });
+
+    roomCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinBtn.click();
+    });
+  </script>
+</body>
+</html>
