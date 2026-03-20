@@ -854,6 +854,21 @@ input[type="text"]::placeholder {
   opacity: 0.4;
 }
 
+/* Dorso jugable — modo A Oscuras */
+.card-back.playable-back {
+  cursor: pointer;
+  border-color: rgba(243, 156, 18, 0.7);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.25), 0 3px 10px var(--card-shadow);
+  transition: all var(--transition);
+}
+
+.card-back.playable-back:hover {
+  transform: translateY(-8px);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.5), 0 12px 24px var(--card-shadow);
+  background: linear-gradient(135deg, #a00000, #e74c3c);
+}
+
 /* Trick card display */
 .trick-card-wrap {
   display: flex;
@@ -1152,3 +1167,147 @@ input[type="text"]::placeholder {
 
 /* Pili pips */
 .pili-pip { font-size: 16px; }
+
+/* =========================================
+   PASSING PHASE (Pasa la Carta)
+   ========================================= */
+
+.passing-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.passing-status {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.passing-instruction {
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid var(--accent-orange);
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+  animation: pulse-border 1.5s infinite alternate;
+}
+
+.passing-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pass-sent-msg {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green-bright);
+}
+
+.pass-progress {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pass-ready {
+  color: var(--green-bright);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pass-players-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pass-player-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+
+.pass-player-chip.passed {
+  border-color: var(--green);
+  color: var(--green-bright);
+  background: rgba(39, 174, 96, 0.08);
+}
+
+/* =========================================
+   TRANSPARENT / MANOS ABIERTAS
+   ========================================= */
+
+.opponents-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(243, 156, 18, 0.05);
+  border: 1px dashed rgba(243, 156, 18, 0.35);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.opponent-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opponent-hand + .opponent-hand {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.opponent-hand-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.opponent-current .opponent-hand-name {
+  color: var(--accent-gold);
+}
+
+.turn-arrow {
+  color: var(--accent-gold);
+  font-size: 11px;
+  animation: pulse-border 0.8s infinite alternate;
+}
+
+.opponent-hand .hand-area {
+  gap: 6px;
+}
+
+/* Cartas de rivales: ligeramente más pequeñas */
+.opponents-section .card {
+  width: 58px;
+  height: 88px;
+}
+
+.opponents-section .card-value {
+  font-size: 17px;
+}
+
+.opponents-section .card-wild-icon {
+  font-size: 22px;
+}

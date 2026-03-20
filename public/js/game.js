@@ -22,6 +22,7 @@ const toastEl      = document.getElementById('toast');
 // Sections
 const sections = {
   lobby:     document.getElementById('lobbySection'),
+  passing:   document.getElementById('passingSection'),
   betting:   document.getElementById('bettingSection'),
   playing:   document.getElementById('playingSection'),
   round_end: document.getElementById('roundEndSection'),
@@ -128,6 +129,7 @@ function renderState(state) {
 
   switch (state.state) {
     case 'lobby':     renderLobby(state);    break;
+    case 'passing':   renderPassing(state);  break;
     case 'betting':   renderBetting(state);  break;
     case 'playing':   renderPlaying(state);  break;
     case 'round_end': renderRoundEnd(state); break;
@@ -220,6 +222,66 @@ document.getElementById('copyLinkBtn').addEventListener('click', () => {
 });
 
 // =============================================
+// PASSING (nuevo modo Pasa la Carta)
+// =============================================
+
+function renderPassing(state) {
+  const mission = state.mission;
+  const passPhase = state.passPhase;
+
+  document.getElementById('passMissionName').textContent = mission.name;
+  document.getElementById('passMissionDesc').textContent = mission.desc;
+  document.getElementById('passRoundInfo').textContent =
+    `Ronda ${state.round} de ${state.totalRounds} · ${mission.cardsPerPlayer} cartas por jugador`;
+
+  const statusEl     = document.getElementById('passingStatus');
+  const instructionEl = document.getElementById('passInstruction');
+  const waitingEl    = document.getElementById('passingWaiting');
+  const progressEl   = document.getElementById('passProgress');
+  const handArea     = document.getElementById('passingHand');
+  const playersStatus = document.getElementById('passPlayersStatus');
+
+  // Progreso general
+  progressEl.textContent = `${passPhase.passedCount} de ${passPhase.totalPlayers} jugadores han elegido`;
+
+  // Estado de cada jugador
+  playersStatus.innerHTML = '';
+  for (const p of state.players) {
+    const chip = document.createElement('div');
+    chip.className = 'pass-player-chip' + (p.hasPassed ? ' passed' : '');
+    chip.innerHTML = `
+      <span>${p.hasPassed ? '✅' : '⏳'}</span>
+      <span>${escHtml(p.name)}</span>
+    `;
+    playersStatus.appendChild(chip);
+  }
+
+  if (passPhase.myHasPassed) {
+    // Ya elegí — mostrar espera
+    statusEl.innerHTML = '<span class="pass-ready">✅ ¡Carta enviada!</span>';
+    instructionEl.classList.add('hidden');
+    handArea.innerHTML = '';
+    waitingEl.classList.remove('hidden');
+  } else {
+    // Aún no elijo — mostrar mis cartas
+    statusEl.innerHTML = '<span class="current-better">¡Elige la carta que quieres pasar!</span>';
+    instructionEl.classList.remove('hidden');
+    waitingEl.classList.add('hidden');
+    handArea.innerHTML = '';
+
+    for (let i = 0; i < state.myCards.length; i++) {
+      const idx = i;
+      const cardEl = makeCardFace(state.myCards[i], true);
+      cardEl.title = 'Clic para pasar esta carta';
+      cardEl.addEventListener('click', () => {
+        socket.emit('passCard', { cardIndex: idx });
+      });
+      handArea.appendChild(cardEl);
+    }
+  }
+}
+
+// =============================================
 // BETTING
 // =============================================
 
@@ -229,7 +291,8 @@ function renderBetting(state) {
   const mission = state.mission;
   document.getElementById('missionName').textContent = mission.name;
   document.getElementById('missionDesc').textContent = mission.desc;
-  document.getElementById('roundInfo').textContent = `Ronda ${state.round} de 20 · ${mission.cardsPerPlayer} carta${mission.cardsPerPlayer > 1 ? 's' : ''} por jugador`;
+  document.getElementById('roundInfo').textContent =
+    `Ronda ${state.round} de ${state.totalRounds} · ${mission.cardsPerPlayer} carta${mission.cardsPerPlayer > 1 ? 's' : ''} por jugador`;
 
   // Current better status
   const bettingStatus = document.getElementById('bettingStatus');
@@ -261,6 +324,30 @@ function renderBetting(state) {
     }
   }
 
+  // Manos Abiertas: mostrar cartas de rivales también en la apuesta
+  const isTransparent = mission.rule === 'transparent' || mission.rule === 'transparent_lowest';
+  const bettingOpponents = document.getElementById('bettingOpponents');
+  const bettingOpponentsHands = document.getElementById('bettingOpponentsHands');
+  if (isTransparent) {
+    bettingOpponents.classList.remove('hidden');
+    bettingOpponentsHands.innerHTML = '';
+    for (const p of state.players) {
+      if (p.id === state.myId) continue;
+      const div = document.createElement('div');
+      div.className = 'opponent-hand';
+      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}</div>`;
+      const cardsRow = document.createElement('div');
+      cardsRow.className = 'hand-area';
+      for (const card of (p.hand || [])) {
+        cardsRow.appendChild(makeCardFace(card, false));
+      }
+      div.appendChild(cardsRow);
+      bettingOpponentsHands.appendChild(div);
+    }
+  } else {
+    bettingOpponents.classList.add('hidden');
+  }
+
   // Bet control (only if it's my turn)
   const betControl = document.getElementById('betControl');
   const isMyTurn = currentBetter && currentBetter.id === state.myId;
@@ -273,9 +360,6 @@ function renderBetting(state) {
   } else {
     betControl.classList.add('hidden');
   }
-
-  // Show other players' bet status
-  // (players who have bet are shown in sidebar with their bet value)
 }
 
 function updateBetDisplay() {
@@ -357,28 +441,85 @@ function renderPlaying(state) {
   }
   playersBets.appendChild(chipsRow);
 
+  // Manos Abiertas: mostrar cartas de rivales
+  const rule = state.mission ? state.mission.rule : '';
+  const isTransparent = rule === 'transparent' || rule === 'transparent_lowest';
+  const playingOpponents = document.getElementById('playingOpponents');
+  const playingOpponentsHands = document.getElementById('playingOpponentsHands');
+  if (isTransparent) {
+    playingOpponents.classList.remove('hidden');
+    playingOpponentsHands.innerHTML = '';
+    for (const p of state.players) {
+      if (p.id === state.myId) continue;
+      const div = document.createElement('div');
+      div.className = 'opponent-hand';
+      if (p.isCurrentPlayer) div.classList.add('opponent-current');
+      div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)}${p.isCurrentPlayer ? ' <span class="turn-arrow">▶</span>' : ''}</div>`;
+      const cardsRow = document.createElement('div');
+      cardsRow.className = 'hand-area';
+      if (p.hand && p.hand.length > 0) {
+        for (const card of p.hand) {
+          cardsRow.appendChild(makeCardFace(card, false));
+        }
+      } else {
+        cardsRow.innerHTML = '<span style="color:var(--text-muted);font-size:13px">Sin cartas</span>';
+      }
+      div.appendChild(cardsRow);
+      playingOpponentsHands.appendChild(div);
+    }
+  } else {
+    playingOpponents.classList.add('hidden');
+  }
+
   // My hand
   const isMyTurn = currentPlayer && currentPlayer.id === state.myId;
   const handArea = document.getElementById('playingHand');
   handArea.innerHTML = '';
-
-  for (let i = 0; i < state.myCards.length; i++) {
-    const card = state.myCards[i];
-    const cardEl = makeCardFace(card, isMyTurn);
-    if (isMyTurn) {
-      cardEl.dataset.index = i;
-      cardEl.addEventListener('click', () => playCard(i));
-    }
-    handArea.appendChild(cardEl);
-  }
-
   const playHint = document.getElementById('playHint');
-  if (isMyTurn) {
-    playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Selecciona una carta</span>';
-  } else if (currentPlayer) {
-    playHint.textContent = `Esperando a ${currentPlayer.name}...`;
+
+  if (state.isFullBlind) {
+    // Modo A Oscuras: mostrar dorsos de carta en lugar de caras
+    // El número de cartas viene del cardCount del jugador en el sidebar
+    const me = state.players.find(p => p.id === state.myId);
+    const myCardCount = me ? me.cardCount : 0;
+
+    for (let i = 0; i < myCardCount; i++) {
+      const idx = i;
+      const backEl = makeCardBack();
+      if (isMyTurn) {
+        backEl.classList.add('playable-back');
+        backEl.title = 'Clic para jugar esta carta (no sabes cuál es)';
+        backEl.addEventListener('click', () => playCard(idx));
+      }
+      handArea.appendChild(backEl);
+    }
+
+    if (isMyTurn) {
+      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Elige un dorso — ¡no sabes qué carta es!</span>';
+    } else if (currentPlayer) {
+      playHint.textContent = `Esperando a ${currentPlayer.name}... (tampoco sabe qué juega)`;
+    } else {
+      playHint.textContent = '';
+    }
   } else {
-    playHint.textContent = '';
+    // Modo normal: mostrar caras de carta
+    for (let i = 0; i < state.myCards.length; i++) {
+      const card = state.myCards[i];
+      const cardEl = makeCardFace(card, isMyTurn);
+      if (isMyTurn) {
+        cardEl.dataset.index = i;
+        cardEl.addEventListener('click', () => playCard(i));
+      }
+      handArea.appendChild(cardEl);
+    }
+
+    if (isMyTurn) {
+      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Selecciona una carta</span>';
+    } else if (currentPlayer) {
+      playHint.textContent = `Esperando a ${currentPlayer.name}...`;
+    } else {
+      playHint.textContent = '';
+    }
   }
 }
 
@@ -420,7 +561,7 @@ function renderRoundEnd(state) {
   if (state.myId === state.hostId) {
     nextBtn.classList.remove('hidden');
     waitMsg.classList.add('hidden');
-    nextBtn.textContent = state.round >= 20 ? 'Ver resultados finales' : 'Siguiente Ronda →';
+    nextBtn.textContent = state.round >= state.totalRounds ? 'Ver resultados finales' : 'Siguiente Ronda →';
   } else {
     nextBtn.classList.add('hidden');
     waitMsg.classList.remove('hidden');

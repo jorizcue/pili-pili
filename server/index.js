@@ -147,6 +147,20 @@ io.on('connection', (socket) => {
     broadcastState(room, roomId);
   });
 
+  socket.on('passCard', ({ cardIndex }) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return socket.emit('error', { message: 'No estás en una sala' });
+    const { room, roomId, playerId } = found;
+
+    const result = room.game.passCard(playerId, cardIndex);
+    if (!result.success) return socket.emit('error', { message: result.error });
+
+    if (result.allPassed) {
+      console.log(`[Pass] All cards passed in ${roomId}`);
+    }
+    broadcastState(room, roomId);
+  });
+
   socket.on('playCard', ({ cardIndex }) => {
     const found = findRoomBySocket(socket.id);
     if (!found) return socket.emit('error', { message: 'No estás en una sala' });

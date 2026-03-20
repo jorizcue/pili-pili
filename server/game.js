@@ -1,26 +1,40 @@
 'use strict';
 
 const MISSIONS = [
-  { id: 1,  name: "Normal",          cardsPerPlayer: 1, rule: 'normal',       desc: '1 carta por jugador. Gana la más alta.' },
-  { id: 2,  name: "Normal",          cardsPerPlayer: 2, rule: 'normal',       desc: '2 cartas por jugador. Gana la más alta.' },
-  { id: 3,  name: "Normal",          cardsPerPlayer: 3, rule: 'normal',       desc: '3 cartas por jugador. Gana la más alta.' },
-  { id: 4,  name: "Normal",          cardsPerPlayer: 4, rule: 'normal',       desc: '4 cartas por jugador. Gana la más alta.' },
-  { id: 5,  name: "Normal",          cardsPerPlayer: 5, rule: 'normal',       desc: '5 cartas por jugador. Gana la más alta.' },
-  { id: 6,  name: "Normal",          cardsPerPlayer: 6, rule: 'normal',       desc: '6 cartas por jugador. Gana la más alta.' },
-  { id: 7,  name: "Normal",          cardsPerPlayer: 7, rule: 'normal',       desc: '7 cartas por jugador. Gana la más alta.' },
-  { id: 8,  name: "¡Al Revés!",      cardsPerPlayer: 2, rule: 'lowest',       desc: '2 cartas. Gana la carta más baja.' },
-  { id: 9,  name: "¡Al Revés!",      cardsPerPlayer: 3, rule: 'lowest',       desc: '3 cartas. Gana la carta más baja.' },
-  { id: 10, name: "¡Al Revés!",      cardsPerPlayer: 4, rule: 'lowest',       desc: '4 cartas. Gana la carta más baja.' },
-  { id: 11, name: "¡Al Revés!",      cardsPerPlayer: 5, rule: 'lowest',       desc: '5 cartas. Gana la carta más baja.' },
-  { id: 12, name: "A Ciegas",        cardsPerPlayer: 3, rule: 'blind',        desc: '3 cartas. ¡Apuesta ANTES de ver tus cartas!' },
-  { id: 13, name: "A Ciegas",        cardsPerPlayer: 4, rule: 'blind',        desc: '4 cartas. ¡Apuesta ANTES de ver tus cartas!' },
-  { id: 14, name: "A Ciegas",        cardsPerPlayer: 5, rule: 'blind',        desc: '5 cartas. ¡Apuesta ANTES de ver tus cartas!' },
-  { id: 15, name: "Doble Pili",      cardsPerPlayer: 2, rule: 'double',       desc: '2 cartas. ¡Cada error vale 2 pilis!' },
-  { id: 16, name: "Doble Pili",      cardsPerPlayer: 3, rule: 'double',       desc: '3 cartas. ¡Cada error vale 2 pilis!' },
-  { id: 17, name: "Doble Pili",      cardsPerPlayer: 4, rule: 'double',       desc: '4 cartas. ¡Cada error vale 2 pilis!' },
-  { id: 18, name: "Ciegas al Revés", cardsPerPlayer: 3, rule: 'blind_lowest', desc: '3 cartas. Apuesta sin ver. Gana la más baja.' },
-  { id: 19, name: "Ciegas al Revés", cardsPerPlayer: 4, rule: 'blind_lowest', desc: '4 cartas. Apuesta sin ver. Gana la más baja.' },
-  { id: 20, name: "Comodín Pierde",  cardsPerPlayer: 4, rule: 'joker_loses',  desc: '4 cartas. El comodín es la carta más baja.' },
+  { id: 1,  name: "Normal",           cardsPerPlayer: 1, rule: 'normal',           desc: '1 carta por jugador. Gana la más alta.' },
+  { id: 2,  name: "Normal",           cardsPerPlayer: 2, rule: 'normal',           desc: '2 cartas por jugador. Gana la más alta.' },
+  { id: 3,  name: "Normal",           cardsPerPlayer: 3, rule: 'normal',           desc: '3 cartas por jugador. Gana la más alta.' },
+  { id: 4,  name: "Normal",           cardsPerPlayer: 4, rule: 'normal',           desc: '4 cartas por jugador. Gana la más alta.' },
+  { id: 5,  name: "Normal",           cardsPerPlayer: 5, rule: 'normal',           desc: '5 cartas por jugador. Gana la más alta.' },
+  { id: 6,  name: "Normal",           cardsPerPlayer: 6, rule: 'normal',           desc: '6 cartas por jugador. Gana la más alta.' },
+  { id: 7,  name: "Normal",           cardsPerPlayer: 7, rule: 'normal',           desc: '7 cartas por jugador. Gana la más alta.' },
+  { id: 8,  name: "¡Al Revés!",       cardsPerPlayer: 2, rule: 'lowest',           desc: '2 cartas. Gana la carta más baja.' },
+  { id: 9,  name: "¡Al Revés!",       cardsPerPlayer: 3, rule: 'lowest',           desc: '3 cartas. Gana la carta más baja.' },
+  { id: 10, name: "¡Al Revés!",       cardsPerPlayer: 4, rule: 'lowest',           desc: '4 cartas. Gana la carta más baja.' },
+  { id: 11, name: "¡Al Revés!",       cardsPerPlayer: 5, rule: 'lowest',           desc: '5 cartas. Gana la carta más baja.' },
+  { id: 12, name: "A Ciegas",         cardsPerPlayer: 3, rule: 'blind',            desc: '3 cartas. ¡Apuesta ANTES de ver tus cartas!' },
+  { id: 13, name: "A Ciegas",         cardsPerPlayer: 4, rule: 'blind',            desc: '4 cartas. ¡Apuesta ANTES de ver tus cartas!' },
+  { id: 14, name: "A Ciegas",         cardsPerPlayer: 5, rule: 'blind',            desc: '5 cartas. ¡Apuesta ANTES de ver tus cartas!' },
+  { id: 15, name: "Doble Pili",       cardsPerPlayer: 2, rule: 'double',           desc: '2 cartas. ¡Cada error vale 2 pilis!' },
+  { id: 16, name: "Doble Pili",       cardsPerPlayer: 3, rule: 'double',           desc: '3 cartas. ¡Cada error vale 2 pilis!' },
+  { id: 17, name: "Doble Pili",       cardsPerPlayer: 4, rule: 'double',           desc: '4 cartas. ¡Cada error vale 2 pilis!' },
+  { id: 18, name: "Ciegas al Revés",  cardsPerPlayer: 3, rule: 'blind_lowest',     desc: '3 cartas. Apuesta sin ver. Gana la más baja.' },
+  { id: 19, name: "Ciegas al Revés",  cardsPerPlayer: 4, rule: 'blind_lowest',     desc: '4 cartas. Apuesta sin ver. Gana la más baja.' },
+  { id: 20, name: "Comodín Pierde",   cardsPerPlayer: 4, rule: 'joker_loses',      desc: '4 cartas. El comodín es la carta más baja.' },
+  // --- Nuevos modos ---
+  { id: 21, name: "Pasa la Carta",    cardsPerPlayer: 3, rule: 'pass',             desc: '3 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
+  { id: 22, name: "Pasa la Carta",    cardsPerPlayer: 4, rule: 'pass',             desc: '4 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
+  { id: 23, name: "Pasa la Carta",    cardsPerPlayer: 5, rule: 'pass',             desc: '5 cartas. ¡Elige 1 carta para pasar al jugador de tu izquierda!' },
+  { id: 24, name: "¡Pasa al Revés!",  cardsPerPlayer: 3, rule: 'pass_lowest',      desc: '3 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
+  { id: 25, name: "¡Pasa al Revés!",  cardsPerPlayer: 4, rule: 'pass_lowest',      desc: '4 cartas. Pasa 1 carta al vecino. ¡Gana la carta más baja!' },
+  { id: 26, name: "Manos Abiertas",         cardsPerPlayer: 3, rule: 'transparent',       desc: '3 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
+  { id: 27, name: "Manos Abiertas",         cardsPerPlayer: 4, rule: 'transparent',       desc: '4 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
+  { id: 28, name: "Manos Abiertas",         cardsPerPlayer: 5, rule: 'transparent',       desc: '5 cartas. ¡Todos pueden ver las cartas de todos! Gana la más alta.' },
+  { id: 29, name: "Manos Abiertas al Revés",cardsPerPlayer: 3, rule: 'transparent_lowest',desc: '3 cartas. Todos ven todas las cartas. ¡Gana la más baja!' },
+  { id: 30, name: "Manos Abiertas al Revés",cardsPerPlayer: 4, rule: 'transparent_lowest',desc: '4 cartas. Todos ven todas las cartas. ¡Gana la más baja!' },
+  { id: 31, name: "A Oscuras",              cardsPerPlayer: 3, rule: 'full_blind',         desc: '3 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
+  { id: 32, name: "A Oscuras",              cardsPerPlayer: 4, rule: 'full_blind',         desc: '4 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
+  { id: 33, name: "A Oscuras al Revés",     cardsPerPlayer: 3, rule: 'full_blind_lowest',  desc: '3 cartas. Nadie ve sus cartas y gana la más baja. ¡El caos total!' },
 ];
 
 function shuffle(arr) {
@@ -65,6 +79,7 @@ class Game {
     this.roundResults = [];
     this.winner = null;
     this.isBlindPhase = false;
+    this.passingCards = {}; // playerIndex -> card chosen to pass
   }
 
   addPlayer(id, name) {
@@ -189,11 +204,52 @@ class Game {
     this.currentBetterIndex = (this.dealerIndex + 1) % numPlayers;
     this.trickLeaderIndex = (this.dealerIndex + 1) % numPlayers;
 
-    const isBlind = this.mission.rule === 'blind' || this.mission.rule === 'blind_lowest';
+    const isBlind = ['blind', 'blind_lowest', 'full_blind', 'full_blind_lowest'].includes(this.mission.rule);
+    const isPass  = this.mission.rule === 'pass'  || this.mission.rule === 'pass_lowest';
+
     this.isBlindPhase = isBlind;
-    this.state = 'betting';
+    this.passingCards = {};
+
+    if (isPass) {
+      this.state = 'passing'; // pass phase before betting
+    } else {
+      this.state = 'betting';
+    }
 
     return { success: true };
+  }
+
+  passCard(playerId, cardIndex) {
+    if (this.state !== 'passing') return { success: false, error: 'No es momento de pasar cartas' };
+    const playerIndex = this.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return { success: false, error: 'Jugador no encontrado' };
+    if (this.passingCards.hasOwnProperty(playerIndex)) {
+      return { success: false, error: 'Ya has elegido la carta a pasar' };
+    }
+
+    const player = this.players[playerIndex];
+    if (cardIndex < 0 || cardIndex >= player.hand.length) {
+      return { success: false, error: 'Índice de carta inválido' };
+    }
+
+    // Remove the chosen card from hand and store it
+    const card = player.hand.splice(cardIndex, 1)[0];
+    this.passingCards[playerIndex] = card;
+
+    // Check if all players have chosen
+    if (Object.keys(this.passingCards).length === this.players.length) {
+      // Simultaneously pass each card to the player on the left (next index)
+      const n = this.players.length;
+      for (let i = 0; i < n; i++) {
+        const recipient = (i + 1) % n;
+        this.players[recipient].hand.push(this.passingCards[i]);
+      }
+      this.passingCards = {};
+      this.state = 'betting';
+      return { success: true, allPassed: true };
+    }
+
+    return { success: true, allPassed: false };
   }
 
   placeBet(playerId, bet) {
@@ -276,16 +332,12 @@ class Game {
       const wVal = cardEffectiveValue(winnerEntry.card, rule);
       const cVal = cardEffectiveValue(challenger.card, rule);
 
-      if (rule === 'lowest' || rule === 'blind_lowest') {
-        // Lowest wins
-        if (cVal < wVal) {
-          winnerEntry = challenger;
-        }
+      const lowestWins = ['lowest', 'blind_lowest', 'pass_lowest', 'transparent_lowest', 'full_blind_lowest'].includes(rule);
+      if (lowestWins) {
+        if (cVal < wVal) winnerEntry = challenger;
       } else {
-        // Highest wins (normal, blind, double, joker_loses)
-        if (cVal > wVal) {
-          winnerEntry = challenger;
-        }
+        // Highest wins (normal, blind, double, joker_loses, pass, transparent, full_blind)
+        if (cVal > wVal) winnerEntry = challenger;
       }
     }
 
@@ -371,6 +423,9 @@ class Game {
     const myIndex = this.players.findIndex(p => p.id === playerId);
 
     const isBlind = this.isBlindPhase;
+    const rule = this.mission ? this.mission.rule : null;
+    const isTransparent = rule === 'transparent' || rule === 'transparent_lowest';
+    const isFullBlind   = rule === 'full_blind'  || rule === 'full_blind_lowest';
 
     const playersInfo = this.players.map((p, i) => ({
       id: p.id,
@@ -383,11 +438,26 @@ class Game {
       isCurrentBetter: this.state === 'betting' && i === this.currentBetterIndex,
       isCurrentPlayer: this.state === 'playing' && i === this.getCurrentPlayerIndex(),
       connected: p.connected,
+      // Para modo transparente: incluye la mano de los rivales (pero no en full_blind)
+      hand: (isTransparent && i !== myIndex) ? p.hand : undefined,
+      // Para fase de pase: indica si este jugador ya eligió
+      hasPassed: this.state === 'passing' ? this.passingCards.hasOwnProperty(i) : undefined,
     }));
 
+    // myCards vacío si: fase ciega de apuesta O si es full_blind (siempre ocultas)
     let myCards = [];
-    if (player && !isBlind) {
+    if (player && !isBlind && !isFullBlind) {
       myCards = player.hand;
+    }
+
+    // Info de la fase de pase
+    let passPhase = null;
+    if (this.state === 'passing') {
+      passPhase = {
+        myHasPassed: this.passingCards.hasOwnProperty(myIndex),
+        passedCount: Object.keys(this.passingCards).length,
+        totalPlayers: this.players.length,
+      };
     }
 
     return {
@@ -404,11 +474,14 @@ class Game {
       trickLeaderIndex: this.trickLeaderIndex,
       dealerIndex: this.dealerIndex,
       round: this.round,
+      totalRounds: this.missions.length,
       roundResults: this.roundResults,
       winner: this.winner,
       hostId: this.hostId,
       isBlindPhase: isBlind,
+      isFullBlind,
       myIndex,
+      passPhase,
     };
   }
 }

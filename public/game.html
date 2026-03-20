@@ -47,6 +47,33 @@
         </div>
       </div>
 
+      <!-- PASSING STATE -->
+      <div class="game-section hidden" id="passingSection">
+        <div class="mission-banner" id="passMissionBanner">
+          <div class="mission-name" id="passMissionName"></div>
+          <div class="mission-desc" id="passMissionDesc"></div>
+        </div>
+
+        <div class="round-info" id="passRoundInfo"></div>
+
+        <div class="passing-area">
+          <div class="passing-status" id="passingStatus"></div>
+
+          <div class="passing-instruction" id="passInstruction">
+            <p>👈 Elige la carta que quieres pasar al jugador de tu <strong>izquierda</strong></p>
+          </div>
+
+          <div class="hand-area" id="passingHand"></div>
+
+          <div class="passing-waiting hidden" id="passingWaiting">
+            <div class="pass-sent-msg">✅ ¡Carta enviada! Esperando a los demás...</div>
+            <div class="pass-progress" id="passProgress"></div>
+          </div>
+
+          <div class="pass-players-status" id="passPlayersStatus"></div>
+        </div>
+      </div>
+
       <!-- BETTING STATE -->
       <div class="game-section hidden" id="bettingSection">
         <div class="mission-banner" id="missionBanner">
@@ -61,6 +88,12 @@
 
           <div class="hand-area" id="bettingHand">
             <!-- Cards shown or backs if blind -->
+          </div>
+
+          <!-- Manos rivales (solo en modo Manos Abiertas) -->
+          <div class="opponents-section hidden" id="bettingOpponents">
+            <h3 class="hand-title">👁️ Manos de los demás jugadores</h3>
+            <div id="bettingOpponentsHands"></div>
           </div>
 
           <div class="bet-control hidden" id="betControl">
@@ -90,6 +123,12 @@
         </div>
 
         <div class="players-bets" id="playersBets"></div>
+
+        <!-- Manos rivales (solo en modo Manos Abiertas) -->
+        <div class="opponents-section hidden" id="playingOpponents">
+          <h3 class="hand-title">👁️ Manos de los demás jugadores</h3>
+          <div id="playingOpponentsHands"></div>
+        </div>
 
         <div class="hand-section">
           <h3 class="hand-title">Tu mano</h3>
