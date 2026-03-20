@@ -11,7 +11,7 @@
   <!-- Header -->
   <header class="game-header">
     <div class="header-left">
-      <span class="header-logo">🌶️ Pili Pili</span>
+      <span class="header-logo">🌶️ PochaSet</span>
       <span class="header-room" id="headerRoom"></span>
     </div>
     <div class="header-right">
@@ -32,14 +32,28 @@
     <!-- Main area -->
     <main class="game-main" id="gameMain">
 
+      <!-- PENDING STATE (waiting for host approval) -->
+      <div class="game-section hidden" id="pendingSection">
+        <div class="pending-approval-box">
+          <div class="pending-approval-icon">⏳</div>
+          <h2>Esperando aprobación</h2>
+          <p id="pendingRoomInfo">El anfitrión debe aprobar tu solicitud para unirte.</p>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:8px">Esta pantalla se actualizará automáticamente si te aprueban.</p>
+          <button class="btn btn-secondary" onclick="window.location.href='/'">Cancelar y volver</button>
+        </div>
+      </div>
+
       <!-- LOBBY STATE -->
       <div class="game-section hidden" id="lobbySection">
         <div class="lobby-box">
-          <h2>Sala <span id="lobbyRoomCode"></span></h2>
+          <h2>Sala <span id="lobbyRoomCode"></span> <span class="room-name-display" id="lobbyRoomName"></span></h2>
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap">
+            <span id="roomTypeBadge" class="badge"></span>
+          </div>
           <p class="lobby-share">Comparte este código con tus amigos para que se unan</p>
           <div class="copy-row">
             <span class="copy-code" id="lobbyCopyCode"></span>
-            <button class="btn btn-sm" id="copyLinkBtn">Copiar enlace</button>
+            <button class="btn btn-sm" id="copyLinkBtn">Compartir enlace</button>
           </div>
           <div class="lobby-players" id="lobbyPlayers"></div>
           <p class="lobby-hint">Se necesitan entre 2 y 8 jugadores</p>
@@ -62,6 +76,11 @@
                 <button class="btn btn-sm btn-ghost" id="cfgSelectNone">Ninguno</button>
               </div>
             </div>
+          </div>
+          <!-- Pending join requests (host only) -->
+          <div class="pending-requests hidden" id="pendingRequests">
+            <h3 class="pending-title">⏳ Solicitudes de unión</h3>
+            <div id="pendingList"></div>
           </div>
           <button class="btn btn-primary btn-large hidden" id="startGameBtn">¡Iniciar Partida!</button>
           <p class="lobby-wait hidden" id="lobbyWait">Esperando al anfitrión...</p>

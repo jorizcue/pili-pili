@@ -147,7 +147,11 @@ function init() {
 
   if (storedAction === 'create') {
     sessionStorage.removeItem('action');
-    socket.emit('createRoom', { playerName: myName });
+    const roomName = sessionStorage.getItem('roomName') || '';
+    const isPublic = sessionStorage.getItem('roomIsPublic') !== 'false';
+    sessionStorage.removeItem('roomName');
+    sessionStorage.removeItem('roomIsPublic');
+    socket.emit('createRoom', { playerName: myName, roomName, isPublic });
   } else if (storedAction === 'join' && storedRoom) {
     sessionStorage.removeItem('action');
     sessionStorage.removeItem('roomCode');
@@ -244,6 +248,19 @@ socket.on('connect', () => {
   }
 });
 
+socket.on('joinPending', ({ roomId: rid, roomName }) => {
+  roomId = rid;
+  for (const s of Object.values(sections)) s.classList.add('hidden');
+  document.getElementById('pendingSection').classList.remove('hidden');
+  document.getElementById('pendingRoomInfo').textContent =
+    `Sala: ${roomName || rid} — Esperando que el anfitrión apruebe tu solicitud.`;
+});
+
+socket.on('joinRejected', ({ message }) => {
+  sessionStorage.setItem('joinError', message || 'El anfitrión rechazó tu solicitud');
+  window.location.href = '/';
+});
+
 // =============================================
 // RENDER ROUTER
 // =============================================
@@ -322,6 +339,44 @@ function renderLobby(state) {
     lobbyPlayers.appendChild(item);
   }
 
+  // Room name display
+  const lobbyRoomNameEl = document.getElementById('lobbyRoomName');
+  if (lobbyRoomNameEl) lobbyRoomNameEl.textContent = state.roomName ? `— ${state.roomName}` : '';
+
+  // Public/private badge
+  const roomTypeBadge = document.getElementById('roomTypeBadge');
+  if (roomTypeBadge) {
+    roomTypeBadge.textContent = state.isPublic ? '🌐 Pública' : '🔒 Privada';
+    roomTypeBadge.className = 'badge ' + (state.isPublic ? 'badge-public' : 'badge-private');
+  }
+
+  // Pending requests (host only, private rooms)
+  const pendingRequests = document.getElementById('pendingRequests');
+  const pendingList = document.getElementById('pendingList');
+  if (state.pendingRequests && state.pendingRequests.length > 0 && state.myId === state.hostId) {
+    pendingRequests.classList.remove('hidden');
+    pendingList.innerHTML = '';
+    for (const req of state.pendingRequests) {
+      const item = document.createElement('div');
+      item.className = 'pending-item';
+      item.innerHTML = `
+        <div class="player-avatar">${escHtml(req.name[0].toUpperCase())}</div>
+        <span class="pending-name">${escHtml(req.name)} quiere unirse</span>
+        <button class="btn btn-sm btn-approve" data-sid="${escHtml(req.socketId)}">✓ Aprobar</button>
+        <button class="btn btn-sm btn-reject" data-sid="${escHtml(req.socketId)}">✗ Rechazar</button>
+      `;
+      pendingList.appendChild(item);
+    }
+    pendingList.querySelectorAll('.btn-approve').forEach(btn => {
+      btn.addEventListener('click', () => socket.emit('approveJoin', { pendingSocketId: btn.dataset.sid }));
+    });
+    pendingList.querySelectorAll('.btn-reject').forEach(btn => {
+      btn.addEventListener('click', () => socket.emit('rejectJoin', { pendingSocketId: btn.dataset.sid }));
+    });
+  } else {
+    pendingRequests.classList.add('hidden');
+  }
+
   const startBtn = document.getElementById('startGameBtn');
   const waitMsg  = document.getElementById('lobbyWait');
 
@@ -389,12 +444,20 @@ document.getElementById('muteBtn').addEventListener('click', () => {
 });
 
 document.getElementById('copyLinkBtn').addEventListener('click', () => {
-  const url = `${window.location.origin}/?room=${roomId}`;
-  navigator.clipboard.writeText(url).then(() => {
-    showToast('Enlace copiado al portapapeles', 'success');
-  }).catch(() => {
-    showToast(`Enlace: ${url}`);
-  });
+  const url = `${window.location.origin}/game?room=${roomId}`;
+  if (navigator.share) {
+    navigator.share({
+      title: 'PochaSet 🌶️',
+      text: `¡Únete a mi partida de PochaSet! Código: ${roomId}`,
+      url,
+    }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('Enlace copiado al portapapeles', 'success');
+    }).catch(() => {
+      showToast(`Enlace: ${url}`);
+    });
+  }
 });
 
 // =============================================

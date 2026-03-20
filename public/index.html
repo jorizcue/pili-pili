@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pili Pili 🌶️</title>
+  <title>PochaSet 🌶️</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body class="landing-body">
   <div class="landing-container">
     <div class="logo-area">
       <div class="logo-icon">🌶️</div>
-      <h1 class="logo-title">Pili Pili</h1>
+      <h1 class="logo-title">PochaSet</h1>
       <p class="logo-subtitle">El juego de cartas más picante</p>
     </div>
 
@@ -29,10 +29,24 @@
 
       <div class="actions-split">
         <div class="action-block">
-          <h2>Crear sala</h2>
-          <p class="action-desc">Empieza una nueva partida y comparte el código con tus amigos.</p>
-          <button class="btn btn-primary" id="createBtn">Crear sala</button>
-        </div>
+  <h2>Crear sala</h2>
+  <p class="action-desc">Empieza una nueva partida y comparte el código con tus amigos.</p>
+  <div class="form-group" style="margin-bottom:0">
+    <label for="roomName" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:600">Nombre de la sala (opcional)</label>
+    <input type="text" id="roomName" placeholder="Ej: La partida del viernes" maxlength="30" autocomplete="off" style="font-size:15px;padding:8px 12px" />
+  </div>
+  <div class="room-type-toggle">
+    <label class="toggle-option">
+      <input type="radio" name="roomType" value="public" checked>
+      <span>🌐 Pública</span>
+    </label>
+    <label class="toggle-option">
+      <input type="radio" name="roomType" value="private">
+      <span>🔒 Privada</span>
+    </label>
+  </div>
+  <button class="btn btn-primary" id="createBtn">Crear sala</button>
+</div>
 
         <div class="divider-v"></div>
 
@@ -54,6 +68,18 @@
       </div>
 
       <div id="errorMsg" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Public rooms -->
+    <div class="public-rooms-panel" id="publicRoomsPanel">
+      <div class="public-rooms-header">
+        <h3>🌐 Salas públicas</h3>
+        <button class="refresh-btn" id="refreshBtn" title="Actualizar">🔄</button>
+      </div>
+      <div id="publicRoomsList">
+        <p class="no-rooms-msg">Cargando salas...</p>
+      </div>
+      <p class="refresh-hint" id="refreshHint"></p>
     </div>
 
     <div class="rules-summary">
@@ -116,6 +142,10 @@
       setTimeout(() => errorMsg.classList.add('hidden'), 4000);
     }
 
+    // Show joinRejected error if coming back from a rejected request
+    const rejErr = sessionStorage.getItem('joinError');
+    if (rejErr) { sessionStorage.removeItem('joinError'); showError(rejErr); }
+
     function getPlayerName() {
       const name = playerNameInput.value.trim();
       if (!name) { showError('Ingresa tu nombre primero'); return null; }
@@ -125,8 +155,12 @@
     createBtn.addEventListener('click', () => {
       const name = getPlayerName();
       if (!name) return;
+      const roomName = (document.getElementById('roomName').value || '').trim().substring(0, 30);
+      const isPublic = document.querySelector('input[name="roomType"]:checked').value === 'public';
       sessionStorage.setItem('playerName', name);
       sessionStorage.setItem('action', 'create');
+      sessionStorage.setItem('roomName', roomName);
+      sessionStorage.setItem('roomIsPublic', isPublic ? 'true' : 'false');
       window.location.href = '/game';
     });
 
@@ -152,6 +186,76 @@
     roomCodeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') joinBtn.click();
     });
+
+    // Public rooms auto-refresh
+    let refreshCountdown = 15;
+    let refreshTimer = null;
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function loadPublicRooms() {
+      try {
+        const resp = await fetch('/api/public-rooms');
+        const rooms = await resp.json();
+        const list = document.getElementById('publicRoomsList');
+        if (rooms.length === 0) {
+          list.innerHTML = '<p class="no-rooms-msg">No hay salas públicas disponibles ahora mismo</p>';
+        } else {
+          list.innerHTML = '';
+          for (const room of rooms) {
+            const item = document.createElement('div');
+            item.className = 'public-room-item';
+            item.innerHTML = `
+              <div class="public-room-info">
+                <span class="public-room-name">${room.roomName !== room.roomId ? escHtml(room.roomName) : 'Sala de ' + escHtml(room.hostName)}</span>
+                <span class="public-room-meta">${room.playerCount} jugador${room.playerCount !== 1 ? 'es' : ''} · ${room.ageStr}</span>
+              </div>
+              <button class="btn btn-sm btn-secondary" onclick="joinPublicRoom('${room.roomId}')">Unirse</button>
+            `;
+            list.appendChild(item);
+          }
+        }
+        refreshCountdown = 15;
+        updateRefreshHint();
+      } catch (e) {
+        document.getElementById('refreshHint').textContent = 'Error al cargar salas';
+      }
+    }
+
+    function joinPublicRoom(code) {
+      const name = getPlayerName();
+      if (!name) return;
+      sessionStorage.setItem('playerName', name);
+      sessionStorage.setItem('roomCode', code);
+      sessionStorage.setItem('action', 'join');
+      window.location.href = `/game?room=${code}`;
+    }
+
+    function updateRefreshHint() {
+      document.getElementById('refreshHint').textContent = `Actualiza en ${refreshCountdown}s`;
+    }
+
+    function startRefreshCycle() {
+      clearInterval(refreshTimer);
+      refreshTimer = setInterval(() => {
+        refreshCountdown--;
+        updateRefreshHint();
+        if (refreshCountdown <= 0) {
+          loadPublicRooms();
+        }
+      }, 1000);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      loadPublicRooms();
+      clearInterval(refreshTimer);
+      startRefreshCycle();
+    });
+
+    loadPublicRooms();
+    startRefreshCycle();
   </script>
 </body>
 </html>
