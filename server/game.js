@@ -205,16 +205,10 @@ class Game {
     this.trickLeaderIndex = (this.dealerIndex + 1) % numPlayers;
 
     const isBlind = ['blind', 'blind_lowest', 'full_blind', 'full_blind_lowest'].includes(this.mission.rule);
-    const isPass  = this.mission.rule === 'pass'  || this.mission.rule === 'pass_lowest';
 
     this.isBlindPhase = isBlind;
     this.passingCards = {};
-
-    if (isPass) {
-      this.state = 'passing'; // pass phase before betting
-    } else {
-      this.state = 'betting';
-    }
+    this.state = 'betting'; // siempre se apuesta primero
 
     return { success: true };
   }
@@ -245,7 +239,7 @@ class Game {
         this.players[recipient].hand.push(this.passingCards[i]);
       }
       this.passingCards = {};
-      this.state = 'betting';
+      this.state = 'playing'; // después del pase → a jugar
       return { success: true, allPassed: true };
     }
 
@@ -264,12 +258,22 @@ class Game {
       return { success: false, error: `La apuesta debe ser entre 0 y ${maxBet}` };
     }
 
+    // Regla: la suma de apuestas NO puede ser igual a cardsPerPlayer
+    // → el último en apostar tiene un valor prohibido
+    const allOthersHaveBet = this.players.every((p, i) => i === playerIndex || p.bet !== null);
+    if (allOthersHaveBet) {
+      const sumOthers = this.players.reduce((s, p, i) => i === playerIndex ? s : s + p.bet, 0);
+      const forbidden = this.mission.cardsPerPlayer - sumOthers;
+      if (bet === forbidden && forbidden >= 0 && forbidden <= maxBet) {
+        return { success: false, error: `No puedes apostar ${forbidden} — la suma total no puede ser igual al número de cartas (${this.mission.cardsPerPlayer})` };
+      }
+    }
+
     player.bet = bet;
 
     // Advance to next better
     const numPlayers = this.players.length;
     let next = (this.currentBetterIndex + 1) % numPlayers;
-    // Go around until we find someone who hasn't bet (one pass)
     let checked = 0;
     while (checked < numPlayers) {
       if (this.players[next].bet === null) {
@@ -283,9 +287,11 @@ class Game {
     // All bets placed
     if (this.isBlindPhase) {
       this.isBlindPhase = false;
-      // Cards revealed now — state transitions to playing
     }
-    this.state = 'playing';
+
+    // Si es modo pase → ir a fase de pase; si no → directamente a jugar
+    const isPass = this.mission.rule === 'pass' || this.mission.rule === 'pass_lowest';
+    this.state = isPass ? 'passing' : 'playing';
     this.currentBetterIndex = -1;
     return { success: true, allBetsPlaced: true };
   }
@@ -450,6 +456,19 @@ class Game {
       myCards = player.hand;
     }
 
+    // Apuesta prohibida para el último apostador
+    let forbiddenBet = null;
+    if (this.state === 'betting' && this.currentBetterIndex === myIndex && myIndex !== -1) {
+      const allOthersHaveBet = this.players.every((p, i) => i === myIndex || p.bet !== null);
+      if (allOthersHaveBet) {
+        const sumOthers = this.players.reduce((s, p, i) => i === myIndex ? s : s + p.bet, 0);
+        const forbidden = this.mission.cardsPerPlayer - sumOthers;
+        if (forbidden >= 0 && forbidden <= this.mission.cardsPerPlayer) {
+          forbiddenBet = forbidden;
+        }
+      }
+    }
+
     // Info de la fase de pase
     let passPhase = null;
     if (this.state === 'passing') {
@@ -482,6 +501,7 @@ class Game {
       isFullBlind,
       myIndex,
       passPhase,
+      forbiddenBet,
     };
   }
 }

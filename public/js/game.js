@@ -6,12 +6,108 @@
 
 const socket = io();
 
+// =============================================
+// SOUND ENGINE (Web Audio API — sin archivos)
+// =============================================
+
+const SFX = (() => {
+  let ctx = null;
+  let muted = false;
+
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+
+  function tone(freq, type, tStart, dur, vol = 0.18) {
+    if (muted) return;
+    try {
+      const c = getCtx();
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, tStart);
+      gain.gain.setValueAtTime(vol, tStart);
+      gain.gain.exponentialRampToValueAtTime(0.001, tStart + dur);
+      osc.start(tStart);
+      osc.stop(tStart + dur + 0.01);
+    } catch (_) {}
+  }
+
+  function now() {
+    try { return getCtx().currentTime; } catch(_) { return 0; }
+  }
+
+  return {
+    toggleMute() {
+      muted = !muted;
+      return muted;
+    },
+    isMuted() { return muted; },
+
+    deal() { // Repartir cartas
+      const t = now();
+      [0, 0.06, 0.12].forEach((d, i) => tone(600 - i * 80, 'sine', t + d, 0.12, 0.12));
+    },
+
+    card() { // Jugar una carta
+      const t = now();
+      tone(380, 'square', t, 0.04, 0.08);
+      tone(620, 'sine', t + 0.03, 0.1, 0.1);
+    },
+
+    bet() { // Confirmar apuesta
+      const t = now();
+      tone(523, 'sine', t, 0.12, 0.15);
+      tone(659, 'sine', t + 0.1, 0.1, 0.12);
+    },
+
+    pass() { // Pasar carta
+      const t = now();
+      tone(440, 'sine', t, 0.06, 0.14);
+      tone(554, 'sine', t + 0.06, 0.06, 0.14);
+      tone(659, 'sine', t + 0.12, 0.1, 0.14);
+    },
+
+    trick() { // Ganar un truco
+      const t = now();
+      [330, 392, 494].forEach((f, i) => tone(f, 'sine', t + i * 0.07, 0.13, 0.16));
+    },
+
+    forbidden() { // Apuesta prohibida
+      const t = now();
+      tone(220, 'sawtooth', t, 0.08, 0.12);
+      tone(196, 'sawtooth', t + 0.07, 0.1, 0.12);
+    },
+
+    roundEnd() { // Fin de ronda
+      const t = now();
+      [392, 349, 330, 294].forEach((f, i) => tone(f, 'sine', t + i * 0.13, 0.18, 0.18));
+    },
+
+    gameWin() { // Ganaste la partida
+      const t = now();
+      [523, 659, 784, 1047, 1318].forEach((f, i) => tone(f, 'triangle', t + i * 0.11, 0.2, 0.2));
+    },
+
+    gameLose() { // Perdiste la partida
+      const t = now();
+      [294, 262, 233, 196].forEach((f, i) => tone(f, 'sawtooth', t + i * 0.15, 0.22, 0.16));
+    },
+  };
+})();
+
 // State
 let myId = null;
 let myName = null;
 let roomId = null;
 let currentState = null;
+let prevGameState = null; // para detectar cambios y disparar sonidos
 let betValue = 0;
+let currentForbiddenBet = null;
 
 // Elements
 const headerRoom   = document.getElementById('headerRoom');
@@ -95,10 +191,44 @@ socket.on('roomCreated', ({ roomId: rid, playerId }) => {
 });
 
 socket.on('gameState', (state) => {
+  handleSounds(prevGameState, state);
+  prevGameState = currentState;
   currentState = state;
   myId = state.myId;
   renderState(state);
 });
+
+function handleSounds(prev, curr) {
+  if (!prev) { SFX.deal(); return; }
+
+  // Cambio de estado
+  if (prev.state !== curr.state) {
+    switch (curr.state) {
+      case 'betting':   SFX.deal();     break;
+      case 'passing':   SFX.pass();     break;
+      case 'round_end': SFX.roundEnd(); break;
+      case 'game_end':
+        // ¿Gané o perdí?
+        const me = curr.players.find(p => p.id === curr.myId);
+        if (me && curr.winner === me.name) SFX.gameWin();
+        else SFX.gameLose();
+        break;
+    }
+  }
+
+  // Carta jugada (trick creció)
+  if (curr.state === 'playing' && prev.state === 'playing' &&
+      curr.currentTrick.length > prev.currentTrick.length) {
+    SFX.card();
+  }
+
+  // Truco resuelto (trick estaba lleno y ahora está vacío)
+  if (curr.state === 'playing' && prev.state === 'playing' &&
+      prev.currentTrick.length === prev.players.length &&
+      curr.currentTrick.length === 0) {
+    SFX.trick();
+  }
+}
 
 socket.on('error', ({ message }) => {
   showToast(message, 'error');
@@ -212,6 +342,11 @@ document.getElementById('startGameBtn').addEventListener('click', () => {
   socket.emit('startGame');
 });
 
+document.getElementById('muteBtn').addEventListener('click', () => {
+  const muted = SFX.toggleMute();
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+});
+
 document.getElementById('copyLinkBtn').addEventListener('click', () => {
   const url = `${window.location.origin}/?room=${roomId}`;
   navigator.clipboard.writeText(url).then(() => {
@@ -274,6 +409,7 @@ function renderPassing(state) {
       const cardEl = makeCardFace(state.myCards[i], true);
       cardEl.title = 'Clic para pasar esta carta';
       cardEl.addEventListener('click', () => {
+        SFX.pass();
         socket.emit('passCard', { cardIndex: idx });
       });
       handArea.appendChild(cardEl);
@@ -354,27 +490,65 @@ function renderBetting(state) {
   if (isMyTurn) {
     betControl.classList.remove('hidden');
     maxBet = mission.cardsPerPlayer;
+    currentForbiddenBet = state.forbiddenBet ?? null;
+
+    // Start betValue away from forbidden if needed
     betValue = 0;
-    updateBetDisplay();
+    if (betValue === currentForbiddenBet) betValue = betValue < maxBet ? betValue + 1 : maxBet - 1 >= 0 ? maxBet - 1 : 0;
+
     document.getElementById('betHint').textContent = `Puedes apostar entre 0 y ${maxBet}`;
+    updateBetDisplay();
   } else {
+    currentForbiddenBet = null;
     betControl.classList.add('hidden');
   }
 }
 
 function updateBetDisplay() {
   document.getElementById('betValue').textContent = betValue;
+
+  const isForbidden = currentForbiddenBet !== null && betValue === currentForbiddenBet;
+  const confirmBtn = document.getElementById('confirmBetBtn');
+  const forbiddenMsg = document.getElementById('forbiddenBetMsg');
+
+  confirmBtn.disabled = isForbidden;
+
+  if (currentForbiddenBet !== null) {
+    forbiddenMsg.classList.remove('hidden');
+    forbiddenMsg.textContent = `❌ No puedes apostar ${currentForbiddenBet} — eres el último en apostar y la suma total no puede ser igual al número de cartas`;
+    if (isForbidden) {
+      forbiddenMsg.classList.add('forbidden-active');
+      SFX.forbidden();
+    } else {
+      forbiddenMsg.classList.remove('forbidden-active');
+    }
+  } else {
+    forbiddenMsg.classList.add('hidden');
+    forbiddenMsg.classList.remove('forbidden-active');
+  }
 }
 
 document.getElementById('betDown').addEventListener('click', () => {
-  if (betValue > 0) { betValue--; updateBetDisplay(); }
+  if (betValue > 0) {
+    betValue--;
+    // Saltar el valor prohibido
+    if (betValue === currentForbiddenBet && betValue > 0) betValue--;
+    updateBetDisplay();
+  }
 });
 
 document.getElementById('betUp').addEventListener('click', () => {
-  if (betValue < maxBet) { betValue++; updateBetDisplay(); }
+  if (betValue < maxBet) {
+    betValue++;
+    // Saltar el valor prohibido
+    if (betValue === currentForbiddenBet && betValue < maxBet) betValue++;
+    updateBetDisplay();
+  }
 });
 
 document.getElementById('confirmBetBtn').addEventListener('click', () => {
+  if (betValue === currentForbiddenBet) return; // doble seguridad
+  SFX.bet();
   socket.emit('placeBet', { bet: betValue });
 });
 
@@ -524,6 +698,7 @@ function renderPlaying(state) {
 }
 
 function playCard(index) {
+  SFX.card();
   socket.emit('playCard', { cardIndex: index });
 }
 
