@@ -101,6 +101,23 @@ function mountAdminRoutes(app) {
     res.json({ ok: true });
   });
 
+  // GET /api/ranking — público, top 15 jugadores por ELO
+  app.get('/api/ranking', (req, res) => {
+    const top = getAllUsers()
+      .filter(u => u.emailVerified)
+      .sort((a, b) => b.elo - a.elo)
+      .slice(0, 15)
+      .map((u, i) => ({
+        position: i + 1,
+        nickname: u.nickname,
+        elo: u.elo,
+        level: getLevel(u.elo),
+        gamesPlayed: u.gamesPlayed || 0,
+        wins: u.wins || 0,
+      }));
+    res.json({ ok: true, ranking: top });
+  });
+
   // GET /api/admin/stats
   app.get('/api/admin/stats', requireAdmin, (req, res) => {
     const users = getAllUsers();

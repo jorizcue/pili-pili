@@ -290,7 +290,19 @@
 <body>
 
 <header>
-  <div class="logo">🌶️ <span>PochaSet</span> Admin</div>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div class="logo">🌶️ <span>PochaSet</span> Admin</div>
+    <a href="/" style="font-size:0.82rem;color:var(--text2);text-decoration:none;display:flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;transition:all 0.2s"
+       onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent2)'"
+       onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border)'">
+      ← Inicio
+    </a>
+    <a href="/ranking.html" style="font-size:0.82rem;color:var(--text2);text-decoration:none;display:flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;transition:all 0.2s"
+       onmouseover="this.style.color='var(--yellow)';this.style.borderColor='var(--yellow)'"
+       onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border)'">
+      🏆 Ranking
+    </a>
+  </div>
   <button id="logoutBtn">Cerrar sesión</button>
 </header>
 

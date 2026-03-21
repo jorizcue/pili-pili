@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ranking — PochaSet 🌶️</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --accent: #e8390e;
+      --accent2: #ff6b35;
+      --text: #f0f0f5;
+      --text2: #9090aa;
+      --gold: #f59e0b;
+      --silver: #94a3b8;
+      --bronze: #b45309;
+      --green: #22c55e;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 1.2rem; font-weight: 700; }
+    .logo span { color: var(--accent2); }
+    .back-link {
+      font-size: 0.82rem;
+      color: var(--text2);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .back-link:hover { color: var(--text); border-color: var(--accent2); }
+
+    /* ── Page content ── */
+    .page {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .page-title h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .page-title p {
+      color: var(--text2);
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+
+    /* ── Podio top 3 ── */
+    .podium {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 12px;
+      margin: 36px 0 32px;
+    }
+    .podium-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .podium-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      border: 3px solid transparent;
+    }
+    .podium-item.first .podium-avatar  { border-color: var(--gold);   background: rgba(245,158,11,.15); }
+    .podium-item.second .podium-avatar { border-color: var(--silver); background: rgba(148,163,184,.12); }
+    .podium-item.third .podium-avatar  { border-color: var(--bronze); background: rgba(180,83,9,.15); }
+    .podium-nick {
+      font-size: 0.8rem;
+      font-weight: 600;
+      max-width: 90px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .podium-elo {
+      font-size: 0.72rem;
+      color: var(--text2);
+    }
+    .podium-block {
+      border-radius: 8px 8px 0 0;
+      width: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: rgba(255,255,255,0.25);
+    }
+    .podium-item.first  .podium-block { height: 80px; background: linear-gradient(to bottom, rgba(245,158,11,.3), rgba(245,158,11,.1)); color: var(--gold); }
+    .podium-item.second .podium-block { height: 56px; background: linear-gradient(to bottom, rgba(148,163,184,.25), rgba(148,163,184,.08)); color: var(--silver); }
+    .podium-item.third  .podium-block { height: 40px; background: linear-gradient(to bottom, rgba(180,83,9,.3), rgba(180,83,9,.1)); color: var(--bronze); }
+
+    /* ── Tabla ── */
+    .ranking-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    .ranking-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ranking-table th:last-child,
+    .ranking-table td:last-child { text-align: right; }
+
+    .ranking-table tbody tr {
+      transition: background 0.15s;
+    }
+    .ranking-table tbody tr:hover { background: var(--surface2); }
+
+    .ranking-table td {
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(46,46,62,.6);
+      vertical-align: middle;
+    }
+
+    .pos-cell {
+      font-weight: 700;
+      font-size: 0.95rem;
+      width: 40px;
+      color: var(--text2);
+    }
+    .pos-cell.gold   { color: var(--gold);   }
+    .pos-cell.silver { color: var(--silver); }
+    .pos-cell.bronze { color: var(--bronze); }
+
+    .nick-cell {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .level-badge {
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      white-space: nowrap;
+    }
+    .elo-cell {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .stats-cell {
+      color: var(--text2);
+      font-size: 0.82rem;
+    }
+
+    /* ── Estado vacío / cargando ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text2);
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Info niveles ── */
+    .levels-info {
+      margin-top: 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .levels-info h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 14px;
+    }
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .level-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+    }
+    .level-item .emoji { font-size: 1.1rem; }
+    .level-item .name  { font-weight: 600; }
+    .level-item .range { color: var(--text2); font-size: 0.75rem; }
+
+    @media (max-width: 500px) {
+      .podium-nick { max-width: 70px; font-size: 0.72rem; }
+      .podium-block { width: 64px; }
+      .ranking-table th:nth-child(4),
+      .ranking-table td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">🌶️ <span>PochaSet</span></div>
+    <a href="/" class="back-link">← Inicio</a>
+  </div>
+  <span style="font-size:0.85rem;color:var(--text2)">🏆 Ranking público</span>
+</header>
+
+<div class="page">
+
+  <div class="page-title">
+    <h1>🏆 Hall of Fame</h1>
+    <p>Los 15 mejores jugadores registrados de PochaSet</p>
+  </div>
+
+  <!-- Podio (top 3) — se rellena con JS -->
+  <div class="podium" id="podium" style="display:none"></div>
+
+  <!-- Estado de carga -->
+  <div class="empty-state" id="loadingState">
+    <div class="spinner"></div>
+    Cargando ranking…
+  </div>
+
+  <!-- Tabla (posiciones 4-15) -->
+  <table class="ranking-table" id="rankingTable" style="display:none">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Jugador</th>
+        <th style="text-align:right">ELO</th>
+        <th style="text-align:right">Partidas</th>
+        <th style="text-align:right">Victorias</th>
+      </tr>
+    </thead>
+    <tbody id="rankingBody"></tbody>
+  </table>
+
+  <!-- Sin jugadores -->
+  <div class="empty-state" id="emptyState" style="display:none">
+    <div class="icon">🌶️</div>
+    <p>Aún no hay jugadores registrados.</p>
+    <p style="margin-top:6px;font-size:0.85rem"><a href="/" style="color:var(--accent2)">¡Sé el primero!</a></p>
+  </div>
+
+  <!-- Leyenda de niveles -->
+  <div class="levels-info">
+    <h3>Niveles de ELO</h3>
+    <div class="levels-grid" id="levelsGrid"></div>
+  </div>
+
+</div>
+
+<script>
+const LEVELS = [
+  { min: 0,    name: 'Novato',          emoji: '🌱' },
+  { min: 400,  name: 'Amateur',         emoji: '🃏' },
+  { min: 700,  name: 'Avanzado',        emoji: '⭐' },
+  { min: 1000, name: 'Pro',             emoji: '🔥' },
+  { min: 1300, name: 'Experto',         emoji: '💎' },
+  { min: 1600, name: 'Ratilla Suprema', emoji: '🐭' },
+];
+
+// Leyenda de niveles
+const levelsGrid = document.getElementById('levelsGrid');
+for (let i = 0; i < LEVELS.length; i++) {
+  const l = LEVELS[i];
+  const next = LEVELS[i + 1];
+  const range = next ? `${l.min}–${next.min - 1}` : `${l.min}+`;
+  const div = document.createElement('div');
+  div.className = 'level-item';
+  div.innerHTML = `<span class="emoji">${l.emoji}</span><span class="name">${l.name}</span><span class="range">${range}</span>`;
+  levelsGrid.appendChild(div);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function posClass(pos) {
+  if (pos === 1) return 'gold';
+  if (pos === 2) return 'silver';
+  if (pos === 3) return 'bronze';
+  return '';
+}
+
+async function loadRanking() {
+  try {
+    const res = await fetch('/api/ranking');
+    const data = await res.json();
+    document.getElementById('loadingState').style.display = 'none';
+
+    if (!data.ok || !data.ranking || data.ranking.length === 0) {
+      document.getElementById('emptyState').style.display = '';
+      return;
+    }
+
+    const ranking = data.ranking;
+
+    // ── Podio top 3 ──
+    const podiumEl = document.getElementById('podium');
+    const top3 = ranking.slice(0, 3);
+    // Orden visual: 2º — 1º — 3º
+    const order = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const classes = top3[1] ? ['second', 'first', 'third'] : ['first', 'third'];
+
+    order.forEach((p, i) => {
+      const cls = classes[i];
+      const heights = { first: '1', second: '2', third: '3' };
+      const div = document.createElement('div');
+      div.className = `podium-item ${cls}`;
+      div.innerHTML = `
+        <div class="podium-avatar">${p.level.emoji}</div>
+        <div class="podium-nick" title="${escHtml(p.nickname)}">${escHtml(p.nickname)}</div>
+        <div class="podium-elo">${p.elo} ELO</div>
+        <div class="podium-block">${heights[cls]}</div>
+      `;
+      podiumEl.appendChild(div);
+    });
+    podiumEl.style.display = 'flex';
+
+    // ── Tabla posiciones 4+ ──
+    const rest = ranking.slice(3);
+    if (rest.length > 0) {
+      const tbody = document.getElementById('rankingBody');
+      for (const p of rest) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="pos-cell ${posClass(p.position)}">${p.position}</td>
+          <td>
+            <div class="nick-cell">
+              ${escHtml(p.nickname)}
+              <span class="level-badge">${p.level.emoji} ${p.level.name}</span>
+            </div>
+          </td>
+          <td class="elo-cell" style="text-align:right">${p.elo}</td>
+          <td class="stats-cell" style="text-align:right">${p.gamesPlayed}</td>
+          <td class="stats-cell" style="text-align:right">${p.wins}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      document.getElementById('rankingTable').style.display = 'table';
+    }
+
+  } catch (e) {
+    document.getElementById('loadingState').innerHTML =
+      '<div class="icon">⚠️</div><p>Error al cargar el ranking. Inténtalo de nuevo.</p>';
+  }
+}
+
+loadRanking();
+</script>
+</body>
+</html>
