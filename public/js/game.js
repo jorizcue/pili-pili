@@ -333,13 +333,57 @@ function renderLobby(state) {
   for (const p of state.players) {
     const item = document.createElement('div');
     item.className = 'lobby-player-item';
-    const isHost = p.id === state.hostId;
+    const isHost   = p.id === state.hostId;
+    const isBot    = p.isBot;
+    const isMe     = p.id === state.myId;
+    const amHost   = state.myId === state.hostId;
+
+    const avatarStyle = isBot ? 'background:rgba(255,107,53,.18);color:#ff6b35;font-size:1.1rem' : '';
+    const avatarContent = isBot ? '🤖' : escHtml(p.name[0].toUpperCase());
+
+    let rightBadge = '';
+    if (isHost)  rightBadge = '<span class="badge badge-host" style="margin-left:auto">Anfitrión</span>';
+    if (isBot && amHost)
+      rightBadge = `<button class="btn btn-sm" style="margin-left:auto;padding:2px 9px;font-size:0.75rem;background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)"
+                     onclick="window._removeBot('${p.id}')">✕ Quitar</button>`;
+
+    const levelTag = p.level ? ` <span style="font-size:.7rem;color:var(--text-muted);margin-left:4px">${p.level.emoji} ${p.level.name}</span>` : '';
+    const botTag   = isBot ? ' <span style="font-size:.7rem;color:#ff6b35;margin-left:4px">BOT</span>' : '';
+
     item.innerHTML = `
-      <div class="player-avatar">${escHtml(p.name[0].toUpperCase())}</div>
-      <span>${escHtml(p.name)}</span>
-      ${isHost ? '<span class="badge badge-host" style="margin-left:auto">Anfitrión</span>' : ''}
+      <div class="player-avatar" style="${avatarStyle}">${avatarContent}</div>
+      <span>${escHtml(p.name)}${botTag}${levelTag}</span>
+      ${rightBadge}
     `;
     lobbyPlayers.appendChild(item);
+  }
+
+  // Panel "Añadir bot" (solo host)
+  let botPanel = document.getElementById('addBotPanel');
+  if (state.myId === state.hostId) {
+    if (!botPanel) {
+      botPanel = document.createElement('div');
+      botPanel.id = 'addBotPanel';
+      botPanel.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center';
+      botPanel.innerHTML = `
+        <span style="font-size:0.85rem;color:var(--text-muted)">Añadir bot:</span>
+        <select id="botDifficulty" style="padding:4px 8px;border-radius:6px;background:var(--bg-panel);color:var(--text-primary);border:1px solid var(--border);font-size:0.83rem">
+          <option value="easy">😴 Fácil</option>
+          <option value="normal" selected>🤖 Normal</option>
+          <option value="hard">😈 Difícil</option>
+        </select>
+        <button class="btn btn-sm btn-secondary" id="addBotBtn" style="display:flex;align-items:center;gap:4px">🤖 Añadir</button>
+      `;
+      lobbyPlayers.after(botPanel);
+      document.getElementById('addBotBtn').addEventListener('click', () => {
+        const diff = document.getElementById('botDifficulty').value;
+        socket.emit('addBot', { difficulty: diff });
+      });
+    }
+    // Ocultar si sala llena
+    botPanel.style.display = state.players.length >= 8 ? 'none' : 'flex';
+  } else if (botPanel) {
+    botPanel.style.display = 'none';
   }
 
   // Room name display
@@ -440,6 +484,9 @@ function renderLobby(state) {
 document.getElementById('startGameBtn').addEventListener('click', () => {
   socket.emit('startGame');
 });
+
+// Expuesto globalmente para los botones inline de "Quitar bot"
+window._removeBot = (botId) => socket.emit('removeBot', { botId });
 
 document.getElementById('muteBtn').addEventListener('click', () => {
   const muted = SFX.toggleMute();

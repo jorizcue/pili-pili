@@ -132,6 +132,25 @@ class Game {
     }
   }
 
+  addBot(botId, botName) {
+    if (this.state !== 'lobby') return { success: false, error: 'La partida ya comenzó' };
+    if (this.players.length >= 8) return { success: false, error: 'La sala está llena (máx. 8 jugadores)' };
+    this.players.push({
+      id: botId, name: botName,
+      pilis: 0, bet: null, tricksWon: 0, hand: [],
+      connected: true, disconnectTimer: null, isBot: true,
+    });
+    return { success: true };
+  }
+
+  removeBot(botId) {
+    if (this.state !== 'lobby') return { success: false, error: 'La partida ya comenzó' };
+    const idx = this.players.findIndex(p => p.id === botId && p.isBot);
+    if (idx === -1) return { success: false, error: 'Bot no encontrado' };
+    this.players.splice(idx, 1);
+    return { success: true };
+  }
+
   addPlayer(id, name) {
     if (this.state !== 'lobby') {
       // Allow reconnect
@@ -548,6 +567,7 @@ class Game {
       isCurrentBetter: this.state === 'betting' && i === this.currentBetterIndex,
       isCurrentPlayer: this.state === 'playing' && i === this.getCurrentPlayerIndex(),
       connected: p.connected,
+      isBot: p.isBot || false,
       // Para modo transparente: en apuesta muestra mitad aleatoria; en juego, ninguna
       // Para modo indio: muestra carta completa del oponente (en apuesta Y en juego)
       hand: (isTransparent && i !== myIndex && this.state === 'betting')

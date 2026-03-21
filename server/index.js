@@ -9,6 +9,7 @@ const path = require('path');
 const { Game, MODE_FAMILIES, RULE_FAMILY } = require('./game');
 const { mountAuthRoutes, verifyToken } = require('./auth');
 const { mountAdminRoutes } = require('./admin');
+const { Bot, releaseBotName } = require('./bot');
 const db = require('./db');
 const { findUserById, getLevel, calcEloChanges, applyEloChanges } = db;
 
@@ -69,6 +70,9 @@ app.get('/api/public-rooms', (req, res) => {
 // Rooms: Map<roomId, { game: Game, sockets: Map<playerId, socketId> }>
 const rooms = new Map();
 
+// Bots: Map<roomId, Map<botId, Bot>>
+const roomBots = new Map();
+
 function generateRoomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O to avoid confusion
   let id;
@@ -81,6 +85,7 @@ function generateRoomId() {
 function broadcastState(room, roomId) {
   const { game, sockets, pendingPlayers, isPublic, roomName, userMap } = room;
   for (const [playerId, socketId] of sockets.entries()) {
+    if (!socketId) continue; // bots no tienen socket real
     const sock = io.sockets.sockets.get(socketId);
     if (sock) {
       const state = game.getStateForPlayer(playerId);
@@ -115,6 +120,92 @@ function findRoomBySocket(socketId) {
     }
   }
   return null;
+}
+
+// ——— Bot action scheduler ——————————————————————————————
+function scheduleBotAction(roomId) {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  const game = room.game;
+  const bots = roomBots.get(roomId);
+  if (!bots || bots.size === 0) return;
+
+  const state = game.state;
+
+  if (state === 'betting') {
+    const betterIdx = game.currentBetterIndex;
+    const betterPlayer = game.players[betterIdx];
+    if (!betterPlayer?.isBot) return;
+    const bot = bots.get(betterPlayer.id);
+    if (!bot) return;
+    setTimeout(() => {
+      if (game.state !== 'betting' || game.currentBetterIndex !== betterIdx) return;
+      const botState = game.getStateForPlayer(betterPlayer.id);
+      const bet = bot.decideBet(botState.myCards, botState);
+      const result = game.placeBet(betterPlayer.id, bet);
+      if (result.success) {
+        console.log(`[Bot] ${betterPlayer.name} apuesta ${bet}`);
+        broadcastState(room, roomId);
+        scheduleBotAction(roomId);
+      }
+    }, bot.thinkTime());
+
+  } else if (state === 'passing') {
+    for (const [botId, bot] of bots) {
+      const botIdx = game.players.findIndex(p => p.id === botId);
+      if (botIdx === -1) continue;
+      const chosen = game.passingCards[botIdx];
+      const alreadyPassed = Array.isArray(chosen) && chosen.length >= game.passCount;
+      if (alreadyPassed) continue;
+      const passesLeft = game.passCount - (chosen?.length || 0);
+      for (let i = 0; i < passesLeft; i++) {
+        setTimeout(() => {
+          if (game.state !== 'passing') return;
+          const botState = game.getStateForPlayer(botId);
+          if (!botState.myCards?.length) return;
+          const cardIdx = bot.decidePass(botState.myCards, botState);
+          const result = game.passCard(botId, cardIdx);
+          if (result.success) {
+            broadcastState(room, roomId);
+            if (result.allPassed) scheduleBotAction(roomId);
+          }
+        }, bot.thinkTime() + i * 400);
+      }
+    }
+
+  } else if (state === 'playing') {
+    const currentIdx = game.getCurrentPlayerIndex();
+    const currentPlayer = game.players[currentIdx];
+    if (!currentPlayer?.isBot) return;
+    const bot = bots.get(currentPlayer.id);
+    if (!bot) return;
+    setTimeout(() => {
+      if (game.state !== 'playing') return;
+      if (game.getCurrentPlayerIndex() !== currentIdx) return;
+      const botState = game.getStateForPlayer(currentPlayer.id);
+      if (!botState.myCards?.length) return;
+      const cardIdx = bot.decidePlay(botState.myCards, botState);
+      const result = game.playCard(currentPlayer.id, cardIdx);
+      if (!result.success) return;
+      if (result.trickComplete) {
+        broadcastState(room, roomId);
+        setTimeout(() => {
+          const trickResult = game.resolveTrick();
+          console.log(`[Trick/Bot] Winner: ${trickResult.winnerName} in ${roomId}`);
+          if (game.isRoundOver()) {
+            game.scoreRound();
+            const gameOver = game.checkGameEnd();
+            if (gameOver) handleGameEnd(room);
+          }
+          broadcastState(room, roomId);
+          scheduleBotAction(roomId);
+        }, 1500);
+      } else {
+        broadcastState(room, roomId);
+        scheduleBotAction(roomId);
+      }
+    }, bot.thinkTime());
+  }
 }
 
 // Cleanup stale lobby rooms older than 3 hours
@@ -348,6 +439,7 @@ io.on('connection', (socket) => {
     if (!result.success) return socket.emit('error', { message: result.error });
 
     broadcastState(room, roomId);
+    scheduleBotAction(roomId); // primer apostador puede ser bot
     console.log(`[Game] Started in room ${roomId}`);
   });
 
@@ -360,6 +452,7 @@ io.on('connection', (socket) => {
     if (!result.success) return socket.emit('error', { message: result.error });
 
     broadcastState(room, roomId);
+    scheduleBotAction(roomId); // siguiente apostador/jugador puede ser bot
   });
 
   socket.on('passCard', ({ cardIndex }) => {
@@ -372,6 +465,7 @@ io.on('connection', (socket) => {
 
     if (result.allPassed) {
       console.log(`[Pass] All cards passed in ${roomId}`);
+      scheduleBotAction(roomId); // primer jugador puede ser bot
     }
     broadcastState(room, roomId);
   });
@@ -401,6 +495,7 @@ io.on('connection', (socket) => {
         }
 
         broadcastState(room, roomId);
+        scheduleBotAction(roomId); // siguiente jugador puede ser bot
       }, 1500);
     } else {
       broadcastState(room, roomId);
@@ -418,7 +513,48 @@ io.on('connection', (socket) => {
 
     if (result.gameEnd) handleGameEnd(room);
     broadcastState(room, roomId);
+    scheduleBotAction(roomId); // primer apostador de la ronda puede ser bot
     console.log(`[Round] Next round in ${roomId}`);
+  });
+
+  // ——— Bot management ———————————————————————————————
+  socket.on('addBot', ({ difficulty } = {}) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    const { room, roomId, playerId } = found;
+    if (room.game.hostId !== playerId) return socket.emit('error', { message: 'Solo el anfitrión puede añadir bots' });
+    if (room.game.players.length >= 8) return socket.emit('error', { message: 'La sala está llena (máx. 8)' });
+
+    const bot = new Bot(difficulty || 'normal');
+    const result = room.game.addBot(bot.id, bot.name);
+    if (!result.success) return socket.emit('error', { message: result.error });
+
+    if (!roomBots.has(roomId)) roomBots.set(roomId, new Map());
+    roomBots.get(roomId).set(bot.id, bot);
+    room.sockets.set(bot.id, null); // bots no tienen socket real
+
+    broadcastState(room, roomId);
+    console.log(`[Bot] Added "${bot.name}" (${difficulty}) to ${roomId}`);
+  });
+
+  socket.on('removeBot', ({ botId } = {}) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    const { room, roomId, playerId } = found;
+    if (room.game.hostId !== playerId) return;
+
+    const result = room.game.removeBot(botId);
+    if (!result.success) return;
+
+    room.sockets.delete(botId);
+    const bots = roomBots.get(roomId);
+    if (bots) {
+      const bot = bots.get(botId);
+      if (bot) releaseBotName(bot.name);
+      bots.delete(botId);
+    }
+    broadcastState(room, roomId);
+    console.log(`[Bot] Removed bot ${botId} from ${roomId}`);
   });
 
   socket.on('disconnect', () => {
@@ -441,8 +577,11 @@ io.on('connection', (socket) => {
       broadcastState(room, roomId);
     });
 
-    // If no players left, clean up room
-    if (room.game.players.length === 0) {
+    // If no players left (or only bots), clean up room
+    const humanPlayers = room.game.players.filter(p => !p.isBot);
+    if (humanPlayers.length === 0) {
+      const bots = roomBots.get(roomId);
+      if (bots) { bots.forEach(b => releaseBotName(b.name)); roomBots.delete(roomId); }
       rooms.delete(roomId);
       console.log(`[Room] Deleted empty room ${roomId}`);
     } else {
