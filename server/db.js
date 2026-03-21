@@ -1,31 +1,135 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 const crypto = require('crypto');
 
-// En Render: monta un disco persistente en /data y añade DATA_DIR=/data como variable de entorno
-// En local: usa server/data/ por defecto
+// ——— Storage backend ————————————————————————————————————————
+// Si S3_BUCKET está definido → usa S3.
+// Si no → fichero local (útil en local y como fallback).
+
+const USE_S3  = !!process.env.S3_BUCKET;
+const S3_KEY  = process.env.S3_KEY || 'pochaset/users.json';
+
+// Instancia del cliente S3 (lazy — sólo si S3_BUCKET está definido)
+let s3 = null;
+function getS3() {
+  if (!s3) {
+    const { S3Client } = require('@aws-sdk/client-s3');
+    s3 = new S3Client({
+      region: process.env.AWS_REGION || 'eu-west-1',
+      credentials: {
+        accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return s3;
+}
+
+// Local fallback
 const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
 const dbPath  = path.join(dataDir, 'users.json');
 
-function ensureDb() {
+// ——— Cache en memoria ————————————————————————————————————————
+let _cache       = { users: [] };
+let _loaded      = false;
+let _saving      = false;
+let _pendingSave = false;
+
+// Carga inicial desde S3
+async function _loadFromS3() {
+  const { GetObjectCommand } = require('@aws-sdk/client-s3');
+  try {
+    const res = await getS3().send(new GetObjectCommand({
+      Bucket: process.env.S3_BUCKET,
+      Key:    S3_KEY,
+    }));
+    const chunks = [];
+    for await (const chunk of res.Body) chunks.push(chunk);
+    _cache = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    console.log(`[DB] ✅ ${_cache.users.length} usuarios cargados desde S3 (${process.env.S3_BUCKET}/${S3_KEY})`);
+  } catch (e) {
+    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
+      console.log('[DB] S3: fichero de usuarios no existe aún, empezando vacío');
+      _cache = { users: [] };
+    } else {
+      console.error('[DB] ❌ Error cargando desde S3:', e.message);
+      _cache = { users: [] };
+    }
+  }
+}
+
+// Guardado asíncrono a S3 (con cola simple para evitar escrituras simultáneas)
+async function _saveToS3() {
+  const { PutObjectCommand } = require('@aws-sdk/client-s3');
+  await getS3().send(new PutObjectCommand({
+    Bucket:      process.env.S3_BUCKET,
+    Key:         S3_KEY,
+    Body:        JSON.stringify(_cache, null, 2),
+    ContentType: 'application/json',
+  }));
+}
+
+// Carga inicial desde fichero local
+function _loadFromLocal() {
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  if (!fs.existsSync(dbPath))  fs.writeFileSync(dbPath, JSON.stringify({ users: [] }, null, 2));
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(dbPath, JSON.stringify({ users: [] }, null, 2));
+    _cache = { users: [] };
+  } else {
+    try { _cache = JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+    catch (_) { _cache = { users: [] }; }
+  }
+  console.log(`[DB] ✅ ${_cache.users.length} usuarios cargados desde ${dbPath}`);
 }
 
-function readDb() {
-  ensureDb();
-  try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-  catch (_) { return { users: [] }; }
+// Guardado síncrono en fichero local
+function _saveToLocal() {
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(dbPath, JSON.stringify(_cache, null, 2));
 }
 
-function writeDb(data) {
-  ensureDb();
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+// Dispara un guardado (con debounce para S3)
+function _triggerSave() {
+  if (USE_S3) {
+    if (_saving) { _pendingSave = true; return; }
+    _saving = true;
+    _saveToS3()
+      .then(() => {
+        _saving = false;
+        if (_pendingSave) { _pendingSave = false; _triggerSave(); }
+      })
+      .catch(e => {
+        _saving = false;
+        console.error('[DB] ❌ Error guardando en S3:', e.message);
+        if (_pendingSave) { _pendingSave = false; _triggerSave(); }
+      });
+  } else {
+    _saveToLocal();
+  }
 }
 
-// ——— ELO ——————————————————————————————————————
+/**
+ * Llama a init() UNA VEZ al arrancar el servidor (antes de escuchar).
+ * Carga los datos desde S3 o disco local según configuración.
+ */
+async function init() {
+  if (_loaded) return;
+  _loaded = true;
+  if (USE_S3) {
+    await _loadFromS3();
+  } else {
+    _loadFromLocal();
+  }
+}
+
+// ——— API pública (síncrona — usa la caché) ————————————————————
+
+function readDb()       { return _cache; }
+function writeDb(data)  { _cache = data; _triggerSave(); }
+
+// ——— ELO ——————————————————————————————————————————————————————
 const ELO_LEVELS = [
   { min: 0,    name: 'Novato',           emoji: '🌱' },
   { min: 400,  name: 'Amateur',          emoji: '🃏' },
@@ -41,7 +145,7 @@ function getLevel(elo) {
   return level;
 }
 
-/** Multiplayer ELO update. players: [{userId, elo, rank}] rank 0=best */
+/** Actualización ELO multijugador. players: [{userId, elo, rank}] rank 0=mejor */
 function calcEloChanges(players) {
   const n = players.length;
   const K = 32;
@@ -57,24 +161,21 @@ function calcEloChanges(players) {
   });
 }
 
-// ——— User CRUD ————————————————————————————————
+// ——— CRUD usuarios ————————————————————————————————————————————
+
 function findUserByEmail(email) {
-  const { users } = readDb();
-  return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  return _cache.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
 function findUserByNickname(nick) {
-  const { users } = readDb();
-  return users.find(u => u.nickname.toLowerCase() === nick.toLowerCase()) || null;
+  return _cache.users.find(u => u.nickname.toLowerCase() === nick.toLowerCase()) || null;
 }
 
 function findUserById(id) {
-  const { users } = readDb();
-  return users.find(u => u.id === id) || null;
+  return _cache.users.find(u => u.id === id) || null;
 }
 
 function createUser({ email, nickname, passwordHash }) {
-  const db = readDb();
   const user = {
     id: crypto.randomUUID(),
     email: email.toLowerCase().trim(),
@@ -89,44 +190,47 @@ function createUser({ email, nickname, passwordHash }) {
     wins: 0,
     createdAt: Date.now(),
   };
-  db.users.push(user);
-  writeDb(db);
+  _cache.users.push(user);
+  _triggerSave();
   return user;
 }
 
 function updateUser(id, updates) {
-  const db = readDb();
-  const idx = db.users.findIndex(u => u.id === id);
+  const idx = _cache.users.findIndex(u => u.id === id);
   if (idx === -1) return null;
-  db.users[idx] = { ...db.users[idx], ...updates };
-  writeDb(db);
-  return db.users[idx];
+  _cache.users[idx] = { ..._cache.users[idx], ...updates };
+  _triggerSave();
+  return _cache.users[idx];
 }
 
 function applyEloChanges(changes) {
-  const db = readDb();
   for (const c of changes) {
-    const idx = db.users.findIndex(u => u.id === c.userId);
+    const idx = _cache.users.findIndex(u => u.id === c.userId);
     if (idx !== -1) {
-      db.users[idx].elo = c.newElo;
-      db.users[idx].gamesPlayed = (db.users[idx].gamesPlayed || 0) + 1;
+      _cache.users[idx].elo        = c.newElo;
+      _cache.users[idx].gamesPlayed = (_cache.users[idx].gamesPlayed || 0) + 1;
     }
   }
-  writeDb(db);
+  _triggerSave();
 }
 
 function getAllUsers() {
-  const { users } = readDb();
-  return users;
+  return _cache.users;
 }
 
 function deleteUser(id) {
-  const db = readDb();
-  const idx = db.users.findIndex(u => u.id === id);
+  const idx = _cache.users.findIndex(u => u.id === id);
   if (idx === -1) return false;
-  db.users.splice(idx, 1);
-  writeDb(db);
+  _cache.users.splice(idx, 1);
+  _triggerSave();
   return true;
 }
 
-module.exports = { readDb, writeDb, findUserByEmail, findUserByNickname, findUserById, createUser, updateUser, applyEloChanges, getLevel, calcEloChanges, ELO_LEVELS, getAllUsers, deleteUser };
+module.exports = {
+  init,
+  readDb, writeDb,
+  findUserByEmail, findUserByNickname, findUserById,
+  createUser, updateUser, applyEloChanges,
+  getLevel, calcEloChanges, ELO_LEVELS,
+  getAllUsers, deleteUser,
+};

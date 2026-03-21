@@ -9,7 +9,8 @@ const path = require('path');
 const { Game, MODE_FAMILIES, RULE_FAMILY } = require('./game');
 const { mountAuthRoutes, verifyToken } = require('./auth');
 const { mountAdminRoutes } = require('./admin');
-const { findUserById, getLevel, calcEloChanges, applyEloChanges } = require('./db');
+const db = require('./db');
+const { findUserById, getLevel, calcEloChanges, applyEloChanges } = db;
 
 const app = express();
 const server = http.createServer(app);
@@ -450,6 +451,12 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`🌶️  Pili Pili server running on http://localhost:${PORT}`);
+// Espera a que la BD esté cargada (S3 o local) antes de aceptar conexiones
+db.init().then(() => {
+  server.listen(PORT, () => {
+    console.log(`🌶️  Pili Pili server running on http://localhost:${PORT}`);
+  });
+}).catch(e => {
+  console.error('[DB] Error fatal al inicializar la base de datos:', e.message);
+  process.exit(1);
 });
