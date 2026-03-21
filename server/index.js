@@ -5,6 +5,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const { Game, MODE_FAMILIES, RULE_FAMILY } = require('./game');
+const { mountAuthRoutes, verifyToken } = require('./auth');
+const { findUserById, getLevel, calcEloChanges, applyEloChanges } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,12 +19,19 @@ const PORT = process.env.PORT || 3000;
 // Static files
 app.use(express.static(path.join(__dirname, '../public')));
 
+// JSON body parser + auth routes
+app.use(express.json());
+mountAuthRoutes(app);
+
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 app.get('/game', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/game.html'));
+});
+app.get('/reset-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/reset-password.html'));
 });
 
 app.get('/api/public-rooms', (req, res) => {
@@ -62,7 +71,7 @@ function generateRoomId() {
 }
 
 function broadcastState(room, roomId) {
-  const { game, sockets, pendingPlayers, isPublic, roomName } = room;
+  const { game, sockets, pendingPlayers, isPublic, roomName, userMap } = room;
   for (const [playerId, socketId] of sockets.entries()) {
     const sock = io.sockets.sockets.get(socketId);
     if (sock) {
@@ -72,6 +81,20 @@ function broadcastState(room, roomId) {
       state.pendingRequests = playerId === game.hostId
         ? [...(pendingPlayers || new Map()).values()].map(p => ({ socketId: p.socketId, name: p.name }))
         : [];
+      // Augment players with ELO/level if registered
+      if (userMap) {
+        state.players = state.players.map(p => {
+          const userId = userMap.get(p.id);
+          if (userId) {
+            const user = findUserById(userId);
+            if (user) {
+              const level = getLevel(user.elo);
+              return { ...p, elo: user.elo, level };
+            }
+          }
+          return p;
+        });
+      }
       sock.emit('gameState', state);
     }
   }
@@ -97,8 +120,55 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+function handleGameEnd(room) {
+  if (!room.userMap || room.userMap.size === 0) return;
+  const game = room.game;
+  if (game.state !== 'game_end') return;
+
+  // Sort players by pilis ascending (best = fewer pilis)
+  const sorted = [...game.players]
+    .sort((a, b) => a.pilis - b.pilis)
+    .map((p, rank) => {
+      const userId = room.userMap.get(p.id);
+      if (!userId) return null;
+      const user = findUserById(userId);
+      if (!user) return null;
+      return { userId, elo: user.elo, rank, name: p.name, isWinner: p.name === game.winner };
+    })
+    .filter(Boolean);
+
+  if (sorted.length < 2) return;
+
+  const changes = calcEloChanges(sorted);
+  applyEloChanges(changes);
+
+  // Mark wins
+  const winner = sorted.find(p => p.isWinner);
+  if (winner) {
+    const user = findUserById(winner.userId);
+    if (user) {
+      const { updateUser } = require('./db');
+      updateUser(winner.userId, { wins: (user.wins || 0) + 1 });
+    }
+  }
+
+  console.log('[ELO] Updated:', changes.map(c => `${c.userId}: ${c.change > 0 ? '+' : ''}${c.change} → ${c.newElo}`).join(', '));
+}
+
 io.on('connection', (socket) => {
   console.log(`[+] Socket connected: ${socket.id}`);
+
+  // Check if socket has a valid JWT → attach user info
+  const authToken = socket.handshake.auth?.token;
+  if (authToken) {
+    const payload = verifyToken(authToken);
+    if (payload) {
+      const user = findUserById(payload.userId);
+      if (user) {
+        socket.user = { userId: user.id, nickname: user.nickname, elo: user.elo };
+      }
+    }
+  }
 
   socket.on('createRoom', ({ playerName, roomName, isPublic }) => {
     if (!playerName || playerName.trim().length === 0) {
@@ -114,6 +184,8 @@ io.on('connection', (socket) => {
 
     const sockets = new Map();
     sockets.set(socket.id, socket.id);
+    const userMap = new Map();
+    if (socket.user) userMap.set(socket.id, socket.user.userId);
     rooms.set(roomId, {
       game,
       sockets,
@@ -121,6 +193,7 @@ io.on('connection', (socket) => {
       isPublic: pub,
       roomName: rName,
       createdAt: Date.now(),
+      userMap,
     });
     socket.join(roomId);
 
@@ -163,6 +236,7 @@ io.on('connection', (socket) => {
     if (!result.success) return socket.emit('error', { message: result.error });
 
     room.sockets.set(socket.id, socket.id);
+    if (socket.user) room.userMap.set(socket.id, socket.user.userId);
     socket.join(rid);
 
     socket.emit('roomCreated', { roomId: rid, playerId: socket.id });
@@ -188,6 +262,7 @@ io.on('connection', (socket) => {
       }
     }
     room.sockets.set(socket.id, socket.id);
+    if (socket.user) room.userMap.set(socket.id, socket.user.userId);
     socket.join(rid);
 
     socket.emit('roomCreated', { roomId: rid, playerId: socket.id });
@@ -228,6 +303,8 @@ io.on('connection', (socket) => {
 
     room.pendingPlayers.delete(pendingSocketId);
     room.sockets.set(pendingSocketId, pendingSocketId);
+    const pendingSockUser = io.sockets.sockets.get(pendingSocketId)?.user;
+    if (pendingSockUser) room.userMap.set(pendingSocketId, pendingSockUser.userId);
     pendingSock.join(roomId);
     pendingSock.emit('roomCreated', { roomId, playerId: pendingSocketId });
     broadcastState(room, roomId);
@@ -312,6 +389,7 @@ io.on('connection', (socket) => {
           const scores = room.game.scoreRound();
           const gameOver = room.game.checkGameEnd();
           console.log(`[Round] Over in ${roomId}. Game over: ${gameOver}`);
+          if (gameOver) handleGameEnd(room);
         }
 
         broadcastState(room, roomId);
@@ -330,6 +408,7 @@ io.on('connection', (socket) => {
     const result = room.game.nextRound();
     if (!result.success) return socket.emit('error', { message: result.error });
 
+    if (result.gameEnd) handleGameEnd(room);
     broadcastState(room, roomId);
     console.log(`[Round] Next round in ${roomId}`);
   });

@@ -14,6 +14,82 @@
       <p class="logo-subtitle">El juego de cartas más picante</p>
     </div>
 
+    <!-- Auth bar -->
+    <div class="auth-bar" id="authBar">
+      <div id="authGuest" class="auth-guest">
+        <button class="btn btn-sm btn-secondary" id="loginBtn">Iniciar sesión</button>
+        <button class="btn btn-sm btn-primary" id="registerBtn">Registrarse</button>
+      </div>
+      <div id="authUser" class="auth-user hidden">
+        <span class="auth-user-info">
+          <span id="authLevelEmoji"></span>
+          <span id="authNickname"></span>
+          <span class="auth-elo-badge" id="authEloBadge"></span>
+        </span>
+        <button class="btn btn-sm btn-ghost" id="logoutBtn">Salir</button>
+      </div>
+    </div>
+
+    <!-- Login modal -->
+    <div class="modal-overlay hidden" id="loginModal">
+      <div class="modal-box">
+        <button class="modal-close" id="loginClose">✕</button>
+        <h2>🌶️ Iniciar sesión</h2>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="Tu contraseña" autocomplete="current-password" />
+        </div>
+        <div class="form-group" style="align-items:flex-end">
+          <button class="btn-link" id="forgotPassBtn">¿Olvidaste la contraseña?</button>
+        </div>
+        <button class="btn btn-primary" style="width:100%" id="loginSubmitBtn">Iniciar sesión</button>
+        <div class="modal-msg hidden" id="loginMsg"></div>
+        <p class="modal-switch">¿No tienes cuenta? <button class="btn-link" id="toRegisterBtn">Regístrate</button></p>
+      </div>
+    </div>
+
+    <!-- Register modal -->
+    <div class="modal-overlay hidden" id="registerModal">
+      <div class="modal-box">
+        <button class="modal-close" id="registerClose">✕</button>
+        <h2>🌶️ Crear cuenta</h2>
+        <div class="form-group">
+          <label>Apodo <span style="color:var(--text-muted);font-weight:400;font-size:12px">(visible en partidas)</span></label>
+          <input type="text" id="regNickname" placeholder="Tu apodo" maxlength="20" autocomplete="nickname" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="regEmail" placeholder="tu@email.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
+        <button class="btn btn-primary" style="width:100%" id="regSubmitBtn">Crear cuenta</button>
+        <div class="modal-msg hidden" id="registerMsg"></div>
+        <p class="modal-switch">¿Ya tienes cuenta? <button class="btn-link" id="toLoginBtn">Inicia sesión</button></p>
+      </div>
+    </div>
+
+    <!-- Forgot password modal -->
+    <div class="modal-overlay hidden" id="forgotModal">
+      <div class="modal-box">
+        <button class="modal-close" id="forgotClose">✕</button>
+        <h2>🔑 Recuperar contraseña</h2>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.</p>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="forgotEmail" placeholder="tu@email.com" autocomplete="email" />
+        </div>
+        <button class="btn btn-primary" style="width:100%" id="forgotSubmitBtn">Enviar enlace</button>
+        <div class="modal-msg hidden" id="forgotMsg"></div>
+      </div>
+    </div>
+
     <div class="card-panel">
       <div class="form-group">
         <label for="playerName">Tu nombre</label>
@@ -83,7 +159,7 @@
     </div>
 
     <div class="rules-summary">
-      <details open>
+      <details>
         <summary class="rules-summary-title">¿Cómo se juega?</summary>
         <div class="rules-body">
           <div class="rules-section">
@@ -131,6 +207,141 @@
     const roomCodeInput = document.getElementById('roomCode');
     const errorMsg = document.getElementById('errorMsg');
 
+    // ——— Auth management ————————————————————————
+    let currentUser = null;
+
+    async function loadUserFromToken() {
+      const token = localStorage.getItem('pochaset_token');
+      if (!token) return setAuthGuest();
+      try {
+        const resp = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+        if (!resp.ok) { localStorage.removeItem('pochaset_token'); return setAuthGuest(); }
+        const { user } = await resp.json();
+        setAuthUser(user);
+      } catch (_) { setAuthGuest(); }
+    }
+
+    function setAuthUser(user) {
+      currentUser = user;
+      document.getElementById('authGuest').classList.add('hidden');
+      document.getElementById('authUser').classList.remove('hidden');
+      document.getElementById('authLevelEmoji').textContent = user.level?.emoji || '';
+      document.getElementById('authNickname').textContent = user.nickname;
+      document.getElementById('authEloBadge').textContent = `${user.elo} ELO · ${user.level?.name || ''}`;
+      // Auto-fill player name
+      if (!playerNameInput.value) playerNameInput.value = user.nickname;
+    }
+
+    function setAuthGuest() {
+      currentUser = null;
+      document.getElementById('authGuest').classList.remove('hidden');
+      document.getElementById('authUser').classList.add('hidden');
+    }
+
+    function showModal(id) {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function hideModals() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', () => showModal('loginModal'));
+    document.getElementById('registerBtn').addEventListener('click', () => showModal('registerModal'));
+    document.getElementById('loginClose').addEventListener('click', hideModals);
+    document.getElementById('registerClose').addEventListener('click', hideModals);
+    document.getElementById('forgotClose').addEventListener('click', hideModals);
+    document.getElementById('toRegisterBtn').addEventListener('click', () => showModal('registerModal'));
+    document.getElementById('toLoginBtn').addEventListener('click', () => showModal('loginModal'));
+    document.getElementById('forgotPassBtn').addEventListener('click', () => showModal('forgotModal'));
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('pochaset_token');
+      playerNameInput.value = '';
+      setAuthGuest();
+    });
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) hideModals(); });
+    });
+
+    // LOGIN
+    document.getElementById('loginSubmitBtn').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const msg = document.getElementById('loginMsg');
+      msg.className = 'modal-msg';
+      try {
+        const resp = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          localStorage.setItem('pochaset_token', data.token);
+          setAuthUser(data.user);
+          hideModals();
+        } else {
+          msg.textContent = data.error || 'Error al iniciar sesión';
+          msg.classList.remove('hidden');
+        }
+      } catch (_) { msg.textContent = 'Error de conexión'; msg.classList.remove('hidden'); }
+    });
+
+    // REGISTER
+    document.getElementById('regSubmitBtn').addEventListener('click', async () => {
+      const nickname = document.getElementById('regNickname').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const msg = document.getElementById('registerMsg');
+      msg.className = 'modal-msg';
+      try {
+        const resp = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname, email, password }),
+        });
+        const data = await resp.json();
+        msg.textContent = data.ok ? '✅ ' + data.message : '❌ ' + (data.error || 'Error');
+        msg.className = 'modal-msg ' + (data.ok ? 'msg-success' : 'msg-error');
+        msg.classList.remove('hidden');
+      } catch (_) { msg.textContent = 'Error de conexión'; msg.classList.remove('hidden'); }
+    });
+
+    // FORGOT PASSWORD
+    document.getElementById('forgotSubmitBtn').addEventListener('click', async () => {
+      const email = document.getElementById('forgotEmail').value.trim();
+      const msg = document.getElementById('forgotMsg');
+      try {
+        const resp = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await resp.json();
+        msg.textContent = data.ok ? '✅ ' + data.message : '❌ ' + (data.error || 'Error');
+        msg.className = 'modal-msg ' + (data.ok ? 'msg-success' : 'msg-error');
+        msg.classList.remove('hidden');
+      } catch (_) { msg.textContent = 'Error de conexión'; msg.classList.remove('hidden'); }
+    });
+
+    // Check for email verification success
+    const urlParams2 = new URLSearchParams(window.location.search);
+    if (urlParams2.get('verified') === '1') {
+      showError(''); // clear
+      const em = document.getElementById('errorMsg');
+      em.textContent = '✅ ¡Email verificado! Ya puedes iniciar sesión.';
+      em.style.borderColor = 'var(--green)';
+      em.style.color = 'var(--green-bright)';
+      em.style.background = 'rgba(39,174,96,0.1)';
+      em.classList.remove('hidden');
+    }
+
+    loadUserFromToken();
+    // ——————————————————————————————————————————
+
     // Pre-fill room code from URL if present
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoom = urlParams.get('room');
@@ -161,6 +372,7 @@
       sessionStorage.setItem('action', 'create');
       sessionStorage.setItem('roomName', roomName);
       sessionStorage.setItem('roomIsPublic', isPublic ? 'true' : 'false');
+      sessionStorage.setItem('pochaset_token', localStorage.getItem('pochaset_token') || '');
       window.location.href = '/game';
     });
 
@@ -172,6 +384,7 @@
       sessionStorage.setItem('playerName', name);
       sessionStorage.setItem('roomCode', code);
       sessionStorage.setItem('action', 'join');
+      sessionStorage.setItem('pochaset_token', localStorage.getItem('pochaset_token') || '');
       window.location.href = `/game?room=${code}`;
     });
 
@@ -230,6 +443,7 @@
       sessionStorage.setItem('playerName', name);
       sessionStorage.setItem('roomCode', code);
       sessionStorage.setItem('action', 'join');
+      sessionStorage.setItem('pochaset_token', localStorage.getItem('pochaset_token') || '');
       window.location.href = `/game?room=${code}`;
     }
 

@@ -4,7 +4,8 @@
 // PILI PILI — Game Client
 // =============================================
 
-const socket = io();
+const _token = sessionStorage.getItem('pochaset_token') || localStorage.getItem('pochaset_token') || '';
+const socket = io({ auth: { token: _token } });
 
 // =============================================
 // SOUND ENGINE (Web Audio API — sin archivos)
@@ -266,7 +267,8 @@ socket.on('joinRejected', ({ message }) => {
 // =============================================
 
 function renderState(state) {
-  // Hide all sections
+  // Hide all sections (including pending)
+  document.getElementById('pendingSection').classList.add('hidden');
   for (const s of Object.values(sections)) s.classList.add('hidden');
 
   const section = sections[state.state];
@@ -305,6 +307,7 @@ function renderScoreSidebar(state) {
     div.innerHTML = `
       <div class="score-player-name">
         <span class="status-dot ${p.connected ? 'online' : 'offline'}"></span>
+        ${p.level ? `<span class="level-emoji" title="${escHtml(p.level.name)}">${p.level.emoji}</span>` : ''}
         ${escHtml(p.name)}
         ${badges.join('')}
       </div>
@@ -741,7 +744,7 @@ function renderPlaying(state) {
 
     const betDisplay = p.bet !== null ? p.bet : '?';
     chip.innerHTML = `
-      <span class="chip-name">${escHtml(p.name)}</span>
+      <span class="chip-name">${p.level ? p.level.emoji + ' ' : ''}${escHtml(p.name)}</span>
       <span class="chip-bet">Apuesta: <span>${betDisplay}</span> · Ganados: <span>${p.tricksWon}</span></span>
       <span class="chip-bet">Cartas: ${p.cardCount}</span>
     `;
