@@ -8,6 +8,145 @@ const _token = sessionStorage.getItem('pochaset_token') || localStorage.getItem(
 const socket = io({ auth: { token: _token } });
 
 // =============================================
+// COSMÉTICOS
+// =============================================
+
+// Estilos CSS por avatarId (sincronizado con el catálogo del servidor)
+const AVATAR_STYLES = {
+  default: '',
+  blue:    'background:linear-gradient(135deg,#3b82f6,#1d4ed8)',
+  green:   'background:linear-gradient(135deg,#22c55e,#15803d)',
+  purple:  'background:linear-gradient(135deg,#a855f7,#7e22ce)',
+  gold:    'background:linear-gradient(135deg,#f59e0b,#92400e)',
+  rainbow: 'background:linear-gradient(135deg,#f43f5e 0%,#f59e0b 33%,#22c55e 66%,#3b82f6 100%)',
+};
+
+// Devuelve el style CSS para el avatar de un player (del estado del juego)
+function avatarCss(player) {
+  if (player.isBot) return 'background:rgba(255,107,53,.18);color:#ff6b35;font-size:1.1rem';
+  return AVATAR_STYLES[player.avatarId] || '';
+}
+
+// Muestra el botón de cosméticos si el usuario está logado
+if (_token) {
+  const cb = document.getElementById('cosmeticsBtn');
+  if (cb) cb.style.display = '';
+}
+
+// ——— Modal de cosméticos —————————————————————————————
+function openCosmeticsModal() {
+  document.getElementById('cosmeticsOverlay').style.display = 'block';
+  loadCosmeticsModal();
+}
+window.closeCosmeticsModal = () => {
+  document.getElementById('cosmeticsOverlay').style.display = 'none';
+};
+document.getElementById('cosmeticsBtn')?.addEventListener('click', openCosmeticsModal);
+document.getElementById('cosmeticsOverlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('cosmeticsOverlay')) closeCosmeticsModal();
+});
+
+async function loadCosmeticsModal() {
+  const avatarEl = document.getElementById('avatarCatalog');
+  const titleEl  = document.getElementById('titleCatalog');
+  avatarEl.innerHTML = '<span style="color:var(--text-muted);font-size:.83rem">Cargando...</span>';
+  titleEl.innerHTML  = '';
+
+  try {
+    const res  = await fetch('/api/cosmetics', { headers: { Authorization: 'Bearer ' + _token } });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    const { cosmetics, catalog } = data;
+    avatarEl.innerHTML = '';
+    titleEl.innerHTML  = '';
+
+    // ——— Avatares ————————————————————————————
+    for (const av of catalog.avatars) {
+      const unlocked = cosmetics.unlockedAvatars.includes(av.id);
+      const equipped = cosmetics.equippedAvatar === av.id;
+      const style    = AVATAR_STYLES[av.id] || '';
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;cursor:' + (unlocked ? 'pointer' : 'default');
+      wrap.title = unlocked ? av.desc : '🔒 ' + av.desc;
+
+      const circle = document.createElement('div');
+      circle.style.cssText = `width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;transition:all .2s;${style || 'background:linear-gradient(135deg,#ff6b35,#e85d00)'};${!unlocked ? 'opacity:0.4;filter:grayscale(1)' : ''};${equipped ? 'box-shadow:0 0 0 3px #fff,0 0 0 5px #f59e0b' : ''}`;
+      circle.textContent = unlocked ? av.name[0] : '🔒';
+
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:.72rem;color:var(--text-muted);text-align:center;max-width:60px';
+      label.textContent = av.name;
+
+      wrap.appendChild(circle);
+      wrap.appendChild(label);
+
+      if (unlocked && !equipped) {
+        wrap.addEventListener('click', async () => {
+          await fetch('/api/cosmetics/equip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + _token },
+            body: JSON.stringify({ type: 'avatar', value: av.id }),
+          });
+          loadCosmeticsModal();
+        });
+      }
+      avatarEl.appendChild(wrap);
+    }
+
+    // ——— Títulos ————————————————————————————
+    // Opción "Sin título"
+    const noTitleRow = _makeTitleRow(null, '— Sin título', 'No mostrar título', cosmetics.equippedTitle === null, true, cosmetics);
+    titleEl.appendChild(noTitleRow);
+
+    for (const t of catalog.titles) {
+      const unlocked = cosmetics.unlockedTitles.includes(t.id);
+      const equipped = cosmetics.equippedTitle === t.id;
+      const row = _makeTitleRow(t.id, t.text, t.desc, equipped, unlocked, cosmetics);
+      titleEl.appendChild(row);
+    }
+
+  } catch (e) {
+    avatarEl.innerHTML = `<span style="color:#ef4444;font-size:.83rem">Error cargando cosméticos: ${e.message}</span>`;
+  }
+}
+
+function _makeTitleRow(id, text, desc, equipped, unlocked, cosmetics) {
+  const row = document.createElement('div');
+  row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid ${equipped ? '#f59e0b' : 'var(--border)'};background:${equipped ? 'rgba(245,158,11,.1)' : 'transparent'};opacity:${unlocked ? 1 : 0.5};cursor:${unlocked && !equipped ? 'pointer' : 'default'}`;
+
+  const textSpan = document.createElement('span');
+  textSpan.style.cssText = 'flex:1;font-size:.88rem';
+  textSpan.textContent = unlocked ? text : '🔒 ' + text;
+
+  const descSpan = document.createElement('span');
+  descSpan.style.cssText = 'font-size:.75rem;color:var(--text-muted)';
+  descSpan.textContent = desc;
+
+  const badge = document.createElement('span');
+  badge.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,.2);color:#f59e0b;white-space:nowrap';
+  badge.textContent = equipped ? '✓ Equipado' : '';
+  badge.style.display = equipped ? '' : 'none';
+
+  row.appendChild(textSpan);
+  row.appendChild(descSpan);
+  row.appendChild(badge);
+
+  if (unlocked && !equipped) {
+    row.addEventListener('click', async () => {
+      await fetch('/api/cosmetics/equip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + _token },
+        body: JSON.stringify({ type: 'title', value: id }),
+      });
+      loadCosmeticsModal();
+    });
+  }
+  return row;
+}
+
+// =============================================
 // SOUND ENGINE (Web Audio API — sin archivos)
 // =============================================
 
@@ -304,11 +443,16 @@ function renderScoreSidebar(state) {
     if (p.isDealer) badges.push('<span class="badge badge-dealer">Dealer</span>');
     if (!p.connected) badges.push('<span class="badge badge-disconnected">⚡</span>');
 
+    const sAvStyle = avatarCss(p);
+    const sAvContent = p.isBot ? '🤖' : escHtml(p.name[0].toUpperCase());
+    const titleTag = p.title ? `<span style="font-size:.7rem;color:#f59e0b;margin-left:4px">${escHtml(p.title)}</span>` : '';
+
     div.innerHTML = `
       <div class="score-player-name">
         <span class="status-dot ${p.connected ? 'online' : 'offline'}"></span>
+        <span style="width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0;${sAvStyle || 'background:linear-gradient(135deg,#ff6b35,#e85d00)'}">${sAvContent}</span>
         ${p.level ? `<span class="level-emoji" title="${escHtml(p.level.name)}">${p.level.emoji}</span>` : ''}
-        ${escHtml(p.name)}
+        ${escHtml(p.name)}${titleTag}
         ${badges.join('')}
       </div>
       <div class="score-pilis">
@@ -338,7 +482,7 @@ function renderLobby(state) {
     const isMe     = p.id === state.myId;
     const amHost   = state.myId === state.hostId;
 
-    const avatarStyle = isBot ? 'background:rgba(255,107,53,.18);color:#ff6b35;font-size:1.1rem' : '';
+    const avatarStyle   = avatarCss(p);
     const avatarContent = isBot ? '🤖' : escHtml(p.name[0].toUpperCase());
 
     let rightBadge = '';
@@ -349,10 +493,11 @@ function renderLobby(state) {
 
     const levelTag = p.level ? ` <span style="font-size:.7rem;color:var(--text-muted);margin-left:4px">${p.level.emoji} ${p.level.name}</span>` : '';
     const botTag   = isBot ? ' <span style="font-size:.7rem;color:#ff6b35;margin-left:4px">BOT</span>' : '';
+    const titleTag = (!isBot && p.title) ? ` <span style="font-size:.7rem;color:#f59e0b;margin-left:2px">${escHtml(p.title)}</span>` : '';
 
     item.innerHTML = `
-      <div class="player-avatar" style="${avatarStyle}">${avatarContent}</div>
-      <span>${escHtml(p.name)}${botTag}${levelTag}</span>
+      <div class="player-avatar" style="${avatarStyle || 'background:linear-gradient(135deg,#ff6b35,#e85d00)'}">${avatarContent}</div>
+      <span>${escHtml(p.name)}${botTag}${titleTag}${levelTag}</span>
       ${rightBadge}
     `;
     lobbyPlayers.appendChild(item);

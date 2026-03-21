@@ -129,6 +129,72 @@ async function init() {
 function readDb()       { return _cache; }
 function writeDb(data)  { _cache = data; _triggerSave(); }
 
+// ——— Catálogo de cosméticos ———————————————————————————————————
+const COSMETIC_CATALOG = {
+  avatars: [
+    { id: 'default', name: 'Clásico',   desc: 'El avatar de siempre',    unlockReq: null },
+    { id: 'blue',    name: 'Oceánico',  desc: 'Alcanza ELO 600',         unlockReq: { elo: 600 } },
+    { id: 'green',   name: 'Esmeralda', desc: 'Alcanza ELO 750',         unlockReq: { elo: 750 } },
+    { id: 'purple',  name: 'Místico',   desc: 'Alcanza ELO 1000',        unlockReq: { elo: 1000 } },
+    { id: 'gold',    name: 'Dorado',    desc: 'Alcanza ELO 1300',        unlockReq: { elo: 1300 } },
+    { id: 'rainbow', name: 'Arcoíris',  desc: 'Consigue 10 victorias',   unlockReq: { wins: 10 } },
+  ],
+  titles: [
+    { id: 'picante',  text: '🌶️ Picante',     desc: 'Por registrarte',          unlockReq: null },
+    { id: 'campeon',  text: '⚡ El Campeón',   desc: 'Consigue 3 victorias',     unlockReq: { wins: 3 } },
+    { id: 'veterano', text: '🎖️ El Veterano',  desc: 'Juega 10 partidas',        unlockReq: { gamesPlayed: 10 } },
+    { id: 'leyenda',  text: '🌟 La Leyenda',   desc: 'Alcanza ELO 1300',         unlockReq: { elo: 1300 } },
+  ],
+};
+
+function _meetsReq(user, req) {
+  if (!req) return true;
+  if (req.elo          && user.elo           <  req.elo)          return false;
+  if (req.wins         && (user.wins || 0)   <  req.wins)         return false;
+  if (req.gamesPlayed  && (user.gamesPlayed || 0) < req.gamesPlayed) return false;
+  return true;
+}
+
+/** Comprueba y desbloquea cosméticos para un usuario. Devuelve el objeto cosmetics. */
+function checkUnlocks(user) {
+  if (!user.cosmetics) {
+    user.cosmetics = { equippedAvatar: 'default', equippedTitle: null,
+                       unlockedAvatars: ['default'], unlockedTitles: [] };
+  }
+  const c = user.cosmetics;
+  let changed = false;
+
+  for (const av of COSMETIC_CATALOG.avatars) {
+    if (c.unlockedAvatars.includes(av.id)) continue;
+    if (_meetsReq(user, av.unlockReq)) { c.unlockedAvatars.push(av.id); changed = true; }
+  }
+  for (const t of COSMETIC_CATALOG.titles) {
+    if (c.unlockedTitles.includes(t.id)) continue;
+    if (_meetsReq(user, t.unlockReq)) { c.unlockedTitles.push(t.id); changed = true; }
+  }
+  if (changed) _triggerSave();
+  return c;
+}
+
+/** Equipa un cosmético (avatar o título). Devuelve { ok, cosmetics } o { ok:false, error }. */
+function equipCosmetic(userId, type, value) {
+  const user = findUserById(userId);
+  if (!user) return { ok: false, error: 'Usuario no encontrado' };
+  checkUnlocks(user);
+  const c = user.cosmetics;
+  if (type === 'avatar') {
+    if (!c.unlockedAvatars.includes(value)) return { ok: false, error: 'Avatar no desbloqueado' };
+    c.equippedAvatar = value;
+  } else if (type === 'title') {
+    if (value !== null && !c.unlockedTitles.includes(value)) return { ok: false, error: 'Título no desbloqueado' };
+    c.equippedTitle = value;
+  } else {
+    return { ok: false, error: 'Tipo inválido' };
+  }
+  updateUser(userId, { cosmetics: c });
+  return { ok: true, cosmetics: c };
+}
+
 // ——— ELO ——————————————————————————————————————————————————————
 const ELO_LEVELS = [
   { min: 0,    name: 'Novato',           emoji: '🌱' },
@@ -233,4 +299,5 @@ module.exports = {
   createUser, updateUser, applyEloChanges,
   getLevel, calcEloChanges, ELO_LEVELS,
   getAllUsers, deleteUser,
+  COSMETIC_CATALOG, checkUnlocks, equipCosmetic,
 };

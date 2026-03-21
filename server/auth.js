@@ -3,7 +3,8 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const crypto = require('crypto');
-const { findUserByEmail, findUserByNickname, findUserById, createUser, updateUser, getLevel } = require('./db');
+const { findUserByEmail, findUserByNickname, findUserById, createUser, updateUser, getLevel,
+        COSMETIC_CATALOG, checkUnlocks, equipCosmetic } = require('./db');
 const { sendVerificationEmail, sendResetEmail } = require('./email');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pochaset-dev-secret-change-in-prod';
@@ -20,6 +21,7 @@ function verifyToken(token) {
 
 function userPublic(user) {
   const level = getLevel(user.elo);
+  const cosmetics = checkUnlocks(user); // desbloquea novedades y devuelve el objeto
   return {
     id: user.id,
     nickname: user.nickname,
@@ -29,6 +31,7 @@ function userPublic(user) {
     level,
     gamesPlayed: user.gamesPlayed,
     wins: user.wins,
+    cosmetics,
   };
 }
 
@@ -155,6 +158,30 @@ function mountAuthRoutes(app) {
     const user = findUserById(payload.userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ ok: true, user: userPublic(user) });
+  });
+
+  // GET /api/cosmetics — catálogo + estado del usuario logado
+  app.get('/api/cosmetics', (req, res) => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No autenticado' });
+    const payload = verifyToken(auth.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Token inválido' });
+    const user = findUserById(payload.userId);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const cosmetics = checkUnlocks(user);
+    res.json({ ok: true, cosmetics, catalog: COSMETIC_CATALOG });
+  });
+
+  // POST /api/cosmetics/equip — equipar avatar o título
+  app.post('/api/cosmetics/equip', (req, res) => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No autenticado' });
+    const payload = verifyToken(auth.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Token inválido' });
+    const { type, value } = req.body || {};
+    const result = equipCosmetic(payload.userId, type, value ?? null);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ ok: true, cosmetics: result.cosmetics });
   });
 }
 

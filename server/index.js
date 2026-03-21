@@ -11,7 +11,12 @@ const { mountAuthRoutes, verifyToken } = require('./auth');
 const { mountAdminRoutes } = require('./admin');
 const { Bot, releaseBotName } = require('./bot');
 const db = require('./db');
-const { findUserById, getLevel, calcEloChanges, applyEloChanges } = db;
+const { findUserById, getLevel, calcEloChanges, applyEloChanges, checkUnlocks, COSMETIC_CATALOG } = db;
+
+// Mapeo id → texto de título (usado al pasar el estado al cliente)
+const _TITLE_TEXTS = Object.fromEntries(
+  (COSMETIC_CATALOG?.titles || []).map(t => [t.id, t.text])
+);
 
 const app = express();
 const server = http.createServer(app);
@@ -102,7 +107,11 @@ function broadcastState(room, roomId) {
             const user = findUserById(userId);
             if (user) {
               const level = getLevel(user.elo);
-              return { ...p, elo: user.elo, level };
+              const cosmetics = checkUnlocks(user);
+              const avatarId = cosmetics?.equippedAvatar || 'default';
+              const titleId  = cosmetics?.equippedTitle;
+              const title    = titleId ? (_TITLE_TEXTS[titleId] || null) : null;
+              return { ...p, elo: user.elo, level, avatarId, title };
             }
           }
           return p;
