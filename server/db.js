@@ -113,4 +113,18 @@ function applyEloChanges(changes) {
   writeDb(db);
 }
 
-module.exports = { readDb, writeDb, findUserByEmail, findUserByNickname, findUserById, createUser, updateUser, applyEloChanges, getLevel, calcEloChanges, ELO_LEVELS };
+function getAllUsers() {
+  const { users } = readDb();
+  return users;
+}
+
+function deleteUser(id) {
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return false;
+  db.users.splice(idx, 1);
+  writeDb(db);
+  return true;
+}
+
+module.exports = { readDb, writeDb, findUserByEmail, findUserByNickname, findUserById, createUser, updateUser, applyEloChanges, getLevel, calcEloChanges, ELO_LEVELS, getAllUsers, deleteUser };

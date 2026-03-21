@@ -1,11 +1,14 @@
 'use strict';
 
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const { Game, MODE_FAMILIES, RULE_FAMILY } = require('./game');
 const { mountAuthRoutes, verifyToken } = require('./auth');
+const { mountAdminRoutes } = require('./admin');
 const { findUserById, getLevel, calcEloChanges, applyEloChanges } = require('./db');
 
 const app = express();
@@ -22,6 +25,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // JSON body parser + auth routes
 app.use(express.json());
 mountAuthRoutes(app);
+mountAdminRoutes(app);
 
 // Routes
 app.get('/', (req, res) => {
@@ -32,6 +36,9 @@ app.get('/game', (req, res) => {
 });
 app.get('/reset-password', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/reset-password.html'));
+});
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
 
 app.get('/api/public-rooms', (req, res) => {
