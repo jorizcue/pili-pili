@@ -4,48 +4,83 @@ const nodemailer = require('nodemailer');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
-function createTransport() {
-  console.log('[Email] SMTP config check:', {
-    SMTP_HOST: process.env.SMTP_HOST || '(no configurado)',
-    SMTP_PORT: process.env.SMTP_PORT || '587',
-    SMTP_USER: process.env.SMTP_USER || '(no configurado)',
-    SMTP_PASS: process.env.SMTP_PASS ? `***${process.env.SMTP_PASS.slice(-4)}` : '(no configurado)',
-    SMTP_FROM: process.env.SMTP_FROM || '(no configurado)',
-    BASE_URL,
-  });
-
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-    console.log('[Email] Transporte SMTP creado OK');
-    return transport;
-  }
-  console.warn('[Email] ⚠️  Sin SMTP configurado — modo consola activado');
-  return null;
+// Parse "Name <email>" format
+function parseSender(from) {
+  const m = (from || '').match(/^(.+?)\s*<(.+?)>$/);
+  return m
+    ? { name: m[1].trim(), email: m[2].trim() }
+    : { name: 'PochaSet', email: from || 'noreply@pochaset.com' };
 }
 
+// ── Brevo HTTP API (works on Render — uses HTTPS port 443) ──
+async function sendViaBrevoApi({ to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('BREVO_API_KEY no configurado');
+
+  const sender = parseSender(process.env.SMTP_FROM);
+  console.log(`[Email] Usando Brevo API → ${to}`);
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  const body = await res.text();
+  if (!res.ok) throw new Error(`Brevo API ${res.status}: ${body}`);
+  console.log(`[Email] ✅ Brevo API OK — respuesta: ${body}`);
+}
+
+// ── Nodemailer SMTP (funciona en local) ─────────────────────
+async function sendViaSmtp({ to, subject, html }) {
+  console.log('[Email] Usando SMTP:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT || '587',
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS ? `***${process.env.SMTP_PASS.slice(-4)}` : '(vacío)',
+  });
+
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+
+  const info = await transport.sendMail({
+    from: process.env.SMTP_FROM || 'PochaSet <noreply@pochaset.com>',
+    to, subject, html,
+  });
+  console.log(`[Email] ✅ SMTP OK — messageId: ${info.messageId}`);
+}
+
+// ── Selector automático ──────────────────────────────────────
 async function sendEmail({ to, subject, html }) {
   console.log(`[Email] Intentando enviar a: ${to} | Asunto: ${subject}`);
-  const transport = createTransport();
-  if (!transport) {
-    console.log(`\n📧 [DEV EMAIL] To: ${to}\nSubject: ${subject}\n${html.replace(/<[^>]+>/g, '')}\n`);
-    return;
+
+  // 1. Brevo API (preferido en producción — no usa SMTP)
+  if (process.env.BREVO_API_KEY) {
+    return sendViaBrevoApi({ to, subject, html });
   }
-  try {
-    const info = await transport.sendMail({
-      from: process.env.SMTP_FROM || 'PochaSet <noreply@pochaset.com>',
-      to, subject, html,
-    });
-    console.log(`[Email] ✅ Enviado OK — messageId: ${info.messageId}`);
-  } catch (err) {
-    console.error(`[Email] ❌ Error al enviar a ${to}:`, err.message);
-    console.error('[Email] Detalle completo:', err);
-    throw err;
+
+  // 2. SMTP genérico (para local u otros proveedores)
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      return await sendViaSmtp({ to, subject, html });
+    } catch (err) {
+      console.error(`[Email] ❌ SMTP falló:`, err.message);
+      throw err;
+    }
   }
+
+  // 3. Sin configuración — modo desarrollo
+  console.warn('[Email] ⚠️  Sin BREVO_API_KEY ni SMTP — imprimiendo en consola:');
+  console.log(`\n📧 [DEV EMAIL]\nTo: ${to}\nSubject: ${subject}\n${html.replace(/<[^>]+>/g, '')}\n`);
 }
 
 async function sendVerificationEmail(email, token) {
