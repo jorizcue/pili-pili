@@ -100,7 +100,8 @@
     </div>
 
     <div class="card-panel">
-      <div class="form-group">
+      <!-- Si no está logado: input libre de nombre -->
+      <div class="form-group" id="nameInputGroup">
         <label for="playerName">Tu nombre</label>
         <input
           type="text"
@@ -110,6 +111,18 @@
           autocomplete="off"
           autofocus
         />
+      </div>
+      <!-- Si está logado: muestra su nick con nivel (sin poder editarlo) -->
+      <div id="nameLoggedDisplay" class="hidden" style="
+        display:flex;align-items:center;gap:10px;
+        background:var(--bg-panel);border:1px solid var(--border);
+        border-radius:var(--radius);padding:10px 14px;margin-bottom:4px">
+        <span id="nameLoggedEmoji" style="font-size:1.3rem"></span>
+        <div>
+          <div id="nameLoggedNick" style="font-weight:700;font-size:1rem;color:var(--text-primary)"></div>
+          <div id="nameLoggedLevel" style="font-size:0.75rem;color:var(--text-muted)"></div>
+        </div>
+        <span style="margin-left:auto;font-size:0.72rem;color:var(--text-muted);font-style:italic">Jugando como usuario registrado</span>
       </div>
 
       <div class="actions-split">
@@ -237,14 +250,31 @@
       document.getElementById('authLevelEmoji').textContent = user.level?.emoji || '';
       document.getElementById('authNickname').textContent = user.nickname;
       document.getElementById('authEloBadge').textContent = `${user.elo} ELO · ${user.level?.name || ''}`;
-      // Auto-fill player name
-      if (!playerNameInput.value) playerNameInput.value = user.nickname;
+
+      // Ocultar input de nombre y mostrar el display de usuario registrado
+      document.getElementById('nameInputGroup').classList.add('hidden');
+      const display = document.getElementById('nameLoggedDisplay');
+      display.classList.remove('hidden');
+      display.style.display = 'flex';
+      document.getElementById('nameLoggedEmoji').textContent = user.level?.emoji || '🌶️';
+      document.getElementById('nameLoggedNick').textContent = user.nickname;
+      document.getElementById('nameLoggedLevel').textContent = `${user.level?.name || ''} · ${user.elo} ELO`;
+
+      // Rellenar el input oculto para que getPlayerName() siga funcionando
+      playerNameInput.value = user.nickname;
     }
 
     function setAuthGuest() {
       currentUser = null;
       document.getElementById('authGuest').classList.remove('hidden');
       document.getElementById('authUser').classList.add('hidden');
+
+      // Mostrar input de nombre y ocultar display de usuario registrado
+      document.getElementById('nameInputGroup').classList.remove('hidden');
+      const display = document.getElementById('nameLoggedDisplay');
+      display.classList.add('hidden');
+      display.style.display = 'none';
+      playerNameInput.value = '';
     }
 
     function showModal(id) {

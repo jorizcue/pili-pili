@@ -48,10 +48,16 @@ html, body {
 .landing-body {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;       /* no cortar el logo por arriba */
   justify-content: center;
   background: radial-gradient(ellipse at top, #1a0a0a 0%, #0f0f1e 60%);
   padding: 20px;
+}
+
+/* Permite scroll en la landing (html,body tiene height:100% para el juego) */
+body.landing-body {
+  height: auto;
+  overflow-y: auto;
 }
 
 .landing-container {
@@ -60,6 +66,8 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  margin-top: auto;    /* centra verticalmente cuando sobra espacio */
+  margin-bottom: auto;
 }
 
 .logo-area {
