@@ -4,7 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const dataDir = path.join(__dirname, 'data');
+// En Render: monta un disco persistente en /data y añade DATA_DIR=/data como variable de entorno
+// En local: usa server/data/ por defecto
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
 const dbPath  = path.join(dataDir, 'users.json');
 
 function ensureDb() {

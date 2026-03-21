@@ -869,7 +869,10 @@ function renderRoundEnd(state) {
     const totalPlayer = state.players.find(p => p.id === r.id);
     const totalPilis = totalPlayer ? totalPlayer.pilis : r.totalPilis;
 
-    const piliDisplay = isPerfect ? '−1 🎯' : '+' + r.pilisGained + ' 🌶️';
+    let piliDisplay = isPerfect ? '−1 🎯' : '+' + r.pilisGained + ' 🌶️';
+    if (r.lastTrickPenalty) {
+      piliDisplay += ' <span title="Última baza" style="color:#f59e0b;font-size:0.85em">+1 🃏</span>';
+    }
 
     tr.innerHTML = `
       <td style="font-weight:700">${escHtml(r.name)}</td>

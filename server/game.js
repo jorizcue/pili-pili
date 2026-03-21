@@ -36,6 +36,9 @@ const MISSIONS = [
   { id: 32, name: "A Oscuras",              cardsPerPlayer: 4, rule: 'full_blind',         desc: '4 cartas. ¡Nadie puede ver ninguna carta! Juegas completamente a ciegas.' },
   { id: 33, name: "A Oscuras al Revés",     cardsPerPlayer: 3, rule: 'full_blind_lowest',  desc: '3 cartas. Nadie ve sus cartas y gana la más baja. ¡El caos total!' },
   { id: 34, name: "El Indio",               cardsPerPlayer: 1, rule: 'indian',             desc: '1 carta. Ves las cartas de todos menos la tuya propia. ¡Adivina tu propio valor!' },
+  { id: 35, name: "Última Baza",            cardsPerPlayer: 3, rule: 'last_trick_pili',    desc: '3 cartas. Apuesta bazas normalmente, pero ¡quien gana la última baza recibe +1 pili extra!' },
+  { id: 36, name: "Última Baza",            cardsPerPlayer: 4, rule: 'last_trick_pili',    desc: '4 cartas. Apuesta bazas normalmente, pero ¡quien gana la última baza recibe +1 pili extra!' },
+  { id: 37, name: "Última Baza",            cardsPerPlayer: 5, rule: 'last_trick_pili',    desc: '5 cartas. Apuesta bazas normalmente, pero ¡quien gana la última baza recibe +1 pili extra!' },
 ];
 
 const MODE_FAMILIES = {
@@ -46,8 +49,9 @@ const MODE_FAMILIES = {
   joker_loses:  'Comodín Pierde',
   pass:         'Pasa la Carta',
   transparent:  'Manos Abiertas',
-  full_blind:   'A Oscuras',
-  indian:       'El Indio',
+  full_blind:       'A Oscuras',
+  indian:           'El Indio',
+  last_trick_pili:  'Última Baza',
 };
 
 // Map rule → family key
@@ -65,6 +69,7 @@ const RULE_FAMILY = {
   full_blind:         'full_blind',
   full_blind_lowest:  'full_blind',
   indian:             'indian',
+  last_trick_pili:    'last_trick_pili',
 };
 
 function shuffle(arr) {
@@ -444,9 +449,13 @@ class Game {
 
   scoreRound() {
     const isDouble = this.mission.rule === 'double';
+    const isLastTrickPili = this.mission.rule === 'last_trick_pili';
+    // trickLeaderIndex is set by the last resolveTrick() call → last trick winner
+    const lastTrickWinnerIndex = this.trickLeaderIndex;
     const results = [];
 
     for (const p of this.players) {
+      const i = this.players.indexOf(p);
       const diff = Math.abs((p.bet ?? 0) - p.tricksWon);
       let pilisGained;
       if (diff === 0) {
@@ -457,12 +466,20 @@ class Game {
         pilisGained = isDouble ? diff * 2 : diff;
         p.pilis += pilisGained;
       }
+
+      // Última Baza: +1 pili extra al ganador de la última baza
+      const lastTrickPenalty = isLastTrickPili && i === lastTrickWinnerIndex;
+      if (lastTrickPenalty) {
+        p.pilis += 1;
+      }
+
       results.push({
         id: p.id,
         name: p.name,
         bet: p.bet ?? 0,
         tricksWon: p.tricksWon,
         pilisGained,
+        lastTrickPenalty,
         totalPilis: p.pilis,
       });
     }
