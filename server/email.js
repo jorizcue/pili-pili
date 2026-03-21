@@ -5,28 +5,47 @@ const nodemailer = require('nodemailer');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 function createTransport() {
+  console.log('[Email] SMTP config check:', {
+    SMTP_HOST: process.env.SMTP_HOST || '(no configurado)',
+    SMTP_PORT: process.env.SMTP_PORT || '587',
+    SMTP_USER: process.env.SMTP_USER || '(no configurado)',
+    SMTP_PASS: process.env.SMTP_PASS ? `***${process.env.SMTP_PASS.slice(-4)}` : '(no configurado)',
+    SMTP_FROM: process.env.SMTP_FROM || '(no configurado)',
+    BASE_URL,
+  });
+
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return nodemailer.createTransport({
+    const transport = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true',
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     });
+    console.log('[Email] Transporte SMTP creado OK');
+    return transport;
   }
-  // Dev mode: log emails to console
+  console.warn('[Email] ⚠️  Sin SMTP configurado — modo consola activado');
   return null;
 }
 
 async function sendEmail({ to, subject, html }) {
+  console.log(`[Email] Intentando enviar a: ${to} | Asunto: ${subject}`);
   const transport = createTransport();
   if (!transport) {
     console.log(`\n📧 [DEV EMAIL] To: ${to}\nSubject: ${subject}\n${html.replace(/<[^>]+>/g, '')}\n`);
     return;
   }
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || 'PochaSet <noreply@pochaset.com>',
-    to, subject, html,
-  });
+  try {
+    const info = await transport.sendMail({
+      from: process.env.SMTP_FROM || 'PochaSet <noreply@pochaset.com>',
+      to, subject, html,
+    });
+    console.log(`[Email] ✅ Enviado OK — messageId: ${info.messageId}`);
+  } catch (err) {
+    console.error(`[Email] ❌ Error al enviar a ${to}:`, err.message);
+    console.error('[Email] Detalle completo:', err);
+    throw err;
+  }
 }
 
 async function sendVerificationEmail(email, token) {
