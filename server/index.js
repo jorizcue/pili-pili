@@ -508,6 +508,7 @@ io.on('connection', (socket) => {
       }, 1500);
     } else {
       broadcastState(room, roomId);
+      scheduleBotAction(roomId); // siguiente jugador puede ser bot (truco en curso)
     }
   });
 
