@@ -430,6 +430,7 @@ function renderState(state) {
 // =============================================
 
 function renderScoreSidebar(state) {
+  document.querySelector('.sidebar-title').textContent = t('sidebar.title');
   scoreList.innerHTML = '';
   for (const p of state.players) {
     const div = document.createElement('div');
@@ -486,13 +487,13 @@ function renderLobby(state) {
     const avatarContent = isBot ? '🤖' : escHtml(p.name[0].toUpperCase());
 
     let rightBadge = '';
-    if (isHost)  rightBadge = '<span class="badge badge-host" style="margin-left:auto">Anfitrión</span>';
+    if (isHost)  rightBadge = `<span class="badge badge-host" style="margin-left:auto">${t('lobby.host')}</span>`;
     if (isBot && amHost)
       rightBadge = `<button class="btn btn-sm" style="margin-left:auto;padding:2px 9px;font-size:0.75rem;background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)"
-                     onclick="window._removeBot('${p.id}')">✕ Quitar</button>`;
+                     onclick="window._removeBot('${p.id}')">${t('lobby.botRemove')}</button>`;
 
     const levelTag = p.level ? ` <span style="font-size:.7rem;color:var(--text-muted);margin-left:4px">${p.level.emoji} ${p.level.name}</span>` : '';
-    const botTag   = isBot ? ' <span style="font-size:.7rem;color:#ff6b35;margin-left:4px">BOT</span>' : '';
+    const botTag   = isBot ? ` <span style="font-size:.7rem;color:#ff6b35;margin-left:4px">${t('lobby.bot')}</span>` : '';
     const titleTag = (!isBot && p.title) ? ` <span style="font-size:.7rem;color:#f59e0b;margin-left:2px">${escHtml(p.title)}</span>` : '';
 
     item.innerHTML = `
@@ -511,13 +512,13 @@ function renderLobby(state) {
       botPanel.id = 'addBotPanel';
       botPanel.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center';
       botPanel.innerHTML = `
-        <span style="font-size:0.85rem;color:var(--text-muted)">Añadir bot:</span>
+        <span style="font-size:0.85rem;color:var(--text-muted)">${t('lobby.addBot')}</span>
         <select id="botDifficulty" style="padding:4px 8px;border-radius:6px;background:var(--bg-panel);color:var(--text-primary);border:1px solid var(--border);font-size:0.83rem">
-          <option value="easy">😴 Fácil</option>
-          <option value="normal" selected>🤖 Normal</option>
-          <option value="hard">😈 Difícil</option>
+          <option value="easy">${t('lobby.botEasy')}</option>
+          <option value="normal" selected>${t('lobby.botNormal')}</option>
+          <option value="hard">${t('lobby.botHard')}</option>
         </select>
-        <button class="btn btn-sm btn-secondary" id="addBotBtn" style="display:flex;align-items:center;gap:4px">🤖 Añadir</button>
+        <button class="btn btn-sm btn-secondary" id="addBotBtn" style="display:flex;align-items:center;gap:4px">${t('lobby.botAdd')}</button>
       `;
       lobbyPlayers.after(botPanel);
       document.getElementById('addBotBtn').addEventListener('click', () => {
@@ -538,7 +539,7 @@ function renderLobby(state) {
   // Public/private badge
   const roomTypeBadge = document.getElementById('roomTypeBadge');
   if (roomTypeBadge) {
-    roomTypeBadge.textContent = state.isPublic ? '🌐 Pública' : '🔒 Privada';
+    roomTypeBadge.textContent = state.isPublic ? t('lobby.public') : t('lobby.private');
     roomTypeBadge.className = 'badge ' + (state.isPublic ? 'badge-public' : 'badge-private');
   }
 
@@ -553,9 +554,9 @@ function renderLobby(state) {
       item.className = 'pending-item';
       item.innerHTML = `
         <div class="player-avatar">${escHtml(req.name[0].toUpperCase())}</div>
-        <span class="pending-name">${escHtml(req.name)} quiere unirse</span>
-        <button class="btn btn-sm btn-approve" data-sid="${escHtml(req.socketId)}">✓ Aprobar</button>
-        <button class="btn btn-sm btn-reject" data-sid="${escHtml(req.socketId)}">✗ Rechazar</button>
+        <span class="pending-name">${escHtml(req.name)} ${t('pending.wants')}</span>
+        <button class="btn btn-sm btn-approve" data-sid="${escHtml(req.socketId)}">${t('pending.approve')}</button>
+        <button class="btn btn-sm btn-reject" data-sid="${escHtml(req.socketId)}">${t('pending.reject')}</button>
       `;
       pendingList.appendChild(item);
     }
@@ -577,8 +578,8 @@ function renderLobby(state) {
     waitMsg.classList.add('hidden');
     startBtn.disabled = state.players.length < 2;
     startBtn.textContent = state.players.length < 2
-      ? `Esperando jugadores (${state.players.length}/2)...`
-      : `¡Iniciar Partida! (${state.players.length} jugadores)`;
+      ? t('lobby.waitingPlayers', {n: state.players.length})
+      : t('lobby.startWith', {n: state.players.length});
   } else {
     startBtn.classList.add('hidden');
     waitMsg.classList.remove('hidden');
@@ -633,10 +634,82 @@ document.getElementById('startGameBtn').addEventListener('click', () => {
 // Expuesto globalmente para los botones inline de "Quitar bot"
 window._removeBot = (botId) => socket.emit('removeBot', { botId });
 
+// =============================================
+// REACTIONS
+// =============================================
+
+const REACTION_KEYS = ['letsgo', 'hurry', 'machine', 'lucky', 'perfect', 'wellplayed', 'nooo', 'thinking'];
+
+let _reactCooldown = false;
+let _reactMenuOpen = false;
+
+function _buildReactionsMenu() {
+  const menu = document.getElementById('reactionsMenu');
+  if (!menu || menu.children.length > 0) return;
+  for (const key of REACTION_KEYS) {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'background:none;border:none;color:var(--text-primary);font-size:0.85rem;padding:6px 10px;border-radius:8px;cursor:pointer;text-align:left;white-space:nowrap;transition:background .15s';
+    btn.textContent = t('react.' + key);
+    btn.dataset.key = key;
+    btn.onmouseenter = () => btn.style.background = 'rgba(255,255,255,.08)';
+    btn.onmouseleave = () => btn.style.background = 'none';
+    btn.addEventListener('click', () => {
+      if (_reactCooldown) return;
+      socket.emit('sendReaction', { reactionKey: key });
+      _reactCooldown = true;
+      setTimeout(() => { _reactCooldown = false; }, 5000);
+      _toggleReactMenu(false);
+    });
+    menu.appendChild(btn);
+  }
+}
+
+function _toggleReactMenu(force) {
+  const menu = document.getElementById('reactionsMenu');
+  const btn  = document.getElementById('reactionsToggle');
+  if (!menu || !btn) return;
+  _reactMenuOpen = force !== undefined ? force : !_reactMenuOpen;
+  menu.style.display = _reactMenuOpen ? 'flex' : 'none';
+  btn.style.transform = _reactMenuOpen ? 'scale(1.1)' : 'scale(1)';
+}
+
+document.getElementById('reactionsToggle')?.addEventListener('click', () => _toggleReactMenu());
+document.addEventListener('click', (e) => {
+  if (_reactMenuOpen && !e.target.closest('#reactionsContainer')) _toggleReactMenu(false);
+});
+
+// Build the menu once translations may have loaded
+setTimeout(_buildReactionsMenu, 100);
+
+// Receive reactions
+let _reactionTimer = null;
+socket.on('reaction', ({ playerName, reactionKey }) => {
+  const display = document.getElementById('reactionDisplay');
+  if (!display) return;
+  const text = t('react.' + reactionKey);
+  display.textContent = `${escHtml(playerName)}: ${text}`;
+  display.style.display = 'block';
+  display.style.opacity = '1';
+  clearTimeout(_reactionTimer);
+  _reactionTimer = setTimeout(() => {
+    display.style.opacity = '0';
+    setTimeout(() => { display.style.display = 'none'; }, 300);
+  }, 3000);
+});
+
 document.getElementById('muteBtn').addEventListener('click', () => {
   const muted = SFX.toggleMute();
   document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
 });
+
+document.getElementById('langSelect')?.addEventListener('change', (e) => {
+  setLang(e.target.value);
+});
+// Set initial value
+if (typeof getLang === 'function') {
+  const sel = document.getElementById('langSelect');
+  if (sel) sel.value = getLang();
+}
 
 document.getElementById('copyLinkBtn').addEventListener('click', () => {
   const url = `${window.location.origin}/game?room=${roomId}`;
@@ -732,7 +805,7 @@ function renderBetting(state) {
   document.getElementById('missionName').textContent = mission.name;
   document.getElementById('missionDesc').textContent = mission.desc;
   document.getElementById('roundInfo').textContent =
-    `Ronda ${state.round} de ${state.totalRounds} · ${mission.cardsPerPlayer} carta${mission.cardsPerPlayer > 1 ? 's' : ''} por jugador`;
+    t('betting.round', {r: state.round, total: state.totalRounds, n: mission.cardsPerPlayer, s: mission.cardsPerPlayer > 1 ? 's' : ''});
 
   // Current better status
   const bettingStatus = document.getElementById('bettingStatus');
@@ -740,12 +813,12 @@ function renderBetting(state) {
 
   if (currentBetter) {
     if (currentBetter.id === state.myId) {
-      bettingStatus.innerHTML = '<span class="current-better">¡Es tu turno de apostar!</span>';
+      bettingStatus.innerHTML = `<span class="current-better">${t('betting.yourTurn')}</span>`;
     } else {
-      bettingStatus.innerHTML = `Apostando: <span class="current-better">${escHtml(currentBetter.name)}</span>`;
+      bettingStatus.innerHTML = `<span class="current-better">${t('betting.waitingFor', {name: escHtml(currentBetter.name)})}</span>`;
     }
   } else {
-    bettingStatus.textContent = 'Apuestas completadas';
+    bettingStatus.textContent = t('betting.done');
   }
 
   // Show hand or card backs
@@ -786,7 +859,7 @@ function renderBetting(state) {
 
       if (isTransparent) {
         const hiddenCount = p.cardCount - visibleCards.length;
-        div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)} <small style="color:var(--text-muted)">(${visibleCards.length} visibles, ${hiddenCount} ocultas)</small></div>`;
+        div.innerHTML = `<div class="opponent-hand-name">${escHtml(p.name)} <small style="color:var(--text-muted)">(${visibleCards.length} ${t('betting.visibles')}, ${hiddenCount} ${t('betting.hidden')})</small></div>`;
         const cardsRow = document.createElement('div');
         cardsRow.className = 'hand-area';
         for (const card of visibleCards) {
@@ -911,10 +984,10 @@ function renderPlaying(state) {
     if (currentPlayer.id === state.myId) {
       trickStatus.innerHTML = '';
     } else {
-      trickStatus.textContent = `Jugando: ${currentPlayer.name}`;
+      trickStatus.textContent = t('playing.waitingFor', {name: currentPlayer.name});
     }
   } else {
-    trickStatus.textContent = 'Resolviendo truco...';
+    trickStatus.textContent = t('playing.resolving');
   }
 
   // Players bet chips
@@ -923,7 +996,7 @@ function renderPlaying(state) {
 
   const headerEl = document.createElement('div');
   headerEl.className = 'players-row-header';
-  headerEl.textContent = 'Jugadores';
+  headerEl.textContent = t('playing.players');
   playersBets.appendChild(headerEl);
 
   const chipsRow = document.createElement('div');
@@ -937,7 +1010,7 @@ function renderPlaying(state) {
     const betDisplay = p.bet !== null ? p.bet : '?';
     chip.innerHTML = `
       <span class="chip-name">${p.level ? p.level.emoji + ' ' : ''}${escHtml(p.name)}</span>
-      <span class="chip-bet">Apuesta: <span>${betDisplay}</span> · Ganados: <span>${p.tricksWon}</span></span>
+      <span class="chip-bet">${t('playing.tricks', {won: p.tricksWon, bet: p.bet ?? 0})}</span>
       <span class="chip-bet">Cartas: ${p.cardCount}</span>
     `;
     chipsRow.appendChild(chip);
@@ -1098,7 +1171,7 @@ document.getElementById('nextRoundBtn').addEventListener('click', () => {
 // =============================================
 
 function renderGameEnd(state) {
-  document.getElementById('winnerName').textContent = `¡Ganador: ${state.winner}! 🎉`;
+  document.getElementById('winnerName').textContent = t('gameEnd.winner', { name: state.winner });
 
   const finalScores = document.getElementById('finalScores');
   finalScores.innerHTML = '';
@@ -1113,6 +1186,30 @@ function renderGameEnd(state) {
       <span class="final-score-pilis">${piliStr}</span>
     `;
     finalScores.appendChild(row);
+  }
+
+  // Share button
+  let shareBtn = document.getElementById('shareResultBtn');
+  if (!shareBtn) {
+    shareBtn = document.createElement('button');
+    shareBtn.id = 'shareResultBtn';
+    shareBtn.className = 'btn btn-secondary';
+    shareBtn.style.cssText = 'margin-top:12px';
+    const backBtn = document.querySelector('#gameEndSection .btn-secondary');
+    if (backBtn) backBtn.parentNode.insertBefore(shareBtn, backBtn);
+  }
+  shareBtn.textContent = t('gameEnd.share');
+  shareBtn.onclick = () => _shareResult(state);
+}
+
+function _shareResult(state) {
+  const sorted = [...state.players].sort((a, b) => a.pilis - b.pilis);
+  const ranking = sorted.map((p, i) => `${i + 1}. ${p.name} — ${p.pilis} 🌶️`).join('\n');
+  const text = t('share.text', { winner: state.winner, ranking });
+  if (navigator.share) {
+    navigator.share({ title: 'PochaSet', text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast(t('share.copied'), 'success')).catch(() => {});
   }
 }
 

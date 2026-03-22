@@ -15,6 +15,12 @@
       <span class="header-room" id="headerRoom"></span>
     </div>
     <div class="header-right">
+      <select id="langSelect" title="Language" style="background:var(--bg-panel);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:0.8rem;cursor:pointer">
+        <option value="es">🇪🇸 ES</option>
+        <option value="en">🇬🇧 EN</option>
+        <option value="it">🇮🇹 IT</option>
+        <option value="de">🇩🇪 DE</option>
+      </select>
       <button class="btn-mute" id="cosmeticsBtn" title="Mis cosméticos" style="display:none">🎨</button>
       <button class="btn-mute" id="muteBtn" title="Silenciar / Activar sonido">🔊</button>
       <span class="header-player" id="headerPlayer"></span>
@@ -26,7 +32,7 @@
 
     <!-- Sidebar: scores -->
     <aside class="score-sidebar" id="scoreSidebar">
-      <h3 class="sidebar-title">Marcador</h3>
+      <h3 class="sidebar-title" data-i18n="sidebar.title">Marcador</h3>
       <div id="scoreList"></div>
     </aside>
 
@@ -37,10 +43,10 @@
       <div class="game-section hidden" id="pendingSection">
         <div class="pending-approval-box">
           <div class="pending-approval-icon">⏳</div>
-          <h2>Esperando aprobación</h2>
-          <p id="pendingRoomInfo">El anfitrión debe aprobar tu solicitud para unirte.</p>
-          <p style="color:var(--text-muted);font-size:13px;margin-top:8px">Esta pantalla se actualizará automáticamente si te aprueban.</p>
-          <button class="btn btn-secondary" onclick="window.location.href='/'">Cancelar y volver</button>
+          <h2 data-i18n="pending.waiting">Esperando aprobación</h2>
+          <p id="pendingRoomInfo" data-i18n="pending.msg">El anfitrión debe aprobar tu solicitud para unirte.</p>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:8px" data-i18n="pending.auto">Esta pantalla se actualizará automáticamente si te aprueban.</p>
+          <button class="btn btn-secondary" onclick="window.location.href='/'" data-i18n="pending.cancel">Cancelar y volver</button>
         </div>
       </div>
 
@@ -51,40 +57,40 @@
           <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap">
             <span id="roomTypeBadge" class="badge"></span>
           </div>
-          <p class="lobby-share">Comparte este código con tus amigos para que se unan</p>
+          <p class="lobby-share" data-i18n="lobby.share">Comparte este código con tus amigos para que se unan</p>
           <div class="copy-row">
             <span class="copy-code" id="lobbyCopyCode"></span>
-            <button class="btn btn-sm" id="copyLinkBtn">Compartir enlace</button>
+            <button class="btn btn-sm" id="copyLinkBtn" data-i18n="lobby.shareBtn">Compartir enlace</button>
           </div>
           <div class="lobby-players" id="lobbyPlayers"></div>
-          <p class="lobby-hint">Se necesitan entre 2 y 8 jugadores</p>
+          <p class="lobby-hint" data-i18n="lobby.hint">Se necesitan entre 2 y 8 jugadores</p>
           <!-- Host config panel -->
           <div class="config-panel hidden" id="configPanel">
-            <h3 class="config-title">⚙️ Configuración</h3>
+            <h3 class="config-title" data-i18n="config.title">⚙️ Configuración</h3>
 
             <div class="config-row">
-              <label class="config-label" for="cfgDeckSize">Cartas en la baraja <span class="config-hint">(10–99, excluyendo comodín)</span></label>
+              <label class="config-label" for="cfgDeckSize"><span data-i18n="config.deckSize">Cartas en la baraja</span> <span class="config-hint" data-i18n="config.deckHint">(10–99, excluyendo comodín)</span></label>
               <input type="number" id="cfgDeckSize" class="config-input" min="10" max="99" value="55" />
             </div>
 
             <div class="config-row">
-              <label class="config-label">Modos de juego incluidos</label>
+              <label class="config-label" data-i18n="config.modes">Modos de juego incluidos</label>
               <div class="config-modes" id="cfgModes">
                 <!-- filled by JS -->
               </div>
               <div class="config-modes-actions">
-                <button class="btn btn-sm btn-ghost" id="cfgSelectAll">Todos</button>
-                <button class="btn btn-sm btn-ghost" id="cfgSelectNone">Ninguno</button>
+                <button class="btn btn-sm btn-ghost" id="cfgSelectAll" data-i18n="config.all">Todos</button>
+                <button class="btn btn-sm btn-ghost" id="cfgSelectNone" data-i18n="config.none">Ninguno</button>
               </div>
             </div>
           </div>
           <!-- Pending join requests (host only) -->
           <div class="pending-requests hidden" id="pendingRequests">
-            <h3 class="pending-title">⏳ Solicitudes de unión</h3>
+            <h3 class="pending-title" data-i18n="pending.title">⏳ Solicitudes de unión</h3>
             <div id="pendingList"></div>
           </div>
-          <button class="btn btn-primary btn-large hidden" id="startGameBtn">¡Iniciar Partida!</button>
-          <p class="lobby-wait hidden" id="lobbyWait">Esperando al anfitrión...</p>
+          <button class="btn btn-primary btn-large hidden" id="startGameBtn" data-i18n="lobby.start">¡Iniciar Partida!</button>
+          <p class="lobby-wait hidden" id="lobbyWait" data-i18n="lobby.waitHost">Esperando al anfitrión...</p>
         </div>
       </div>
 
@@ -133,12 +139,12 @@
 
           <!-- Manos rivales (solo en modo Manos Abiertas) -->
           <div class="opponents-section hidden" id="bettingOpponents">
-            <h3 class="hand-title">👁️ Manos de los demás jugadores</h3>
+            <h3 class="hand-title" data-i18n="betting.opponents">👁️ Manos de los demás</h3>
             <div id="bettingOpponentsHands"></div>
           </div>
 
           <div class="bet-control hidden" id="betControl">
-            <h3>Tu apuesta</h3>
+            <h3 data-i18n="betting.yourBet">Tu apuesta</h3>
             <div class="bet-selector">
               <button class="bet-btn" id="betDown">−</button>
               <span class="bet-value" id="betValue">0</span>
@@ -146,7 +152,7 @@
             </div>
             <p class="bet-hint" id="betHint"></p>
             <p class="forbidden-bet-msg hidden" id="forbiddenBetMsg"></p>
-            <button class="btn btn-primary" id="confirmBetBtn">Confirmar apuesta</button>
+            <button class="btn btn-primary" id="confirmBetBtn" data-i18n="betting.confirm">Confirmar apuesta</button>
           </div>
         </div>
       </div>
@@ -159,7 +165,7 @@
         </div>
 
         <div class="trick-area">
-          <h3 class="trick-title">Truco actual</h3>
+          <h3 class="trick-title" data-i18n="playing.trick">Truco actual</h3>
           <div class="trick-cards" id="trickCards"></div>
           <div class="trick-status" id="trickStatus"></div>
         </div>
@@ -173,7 +179,7 @@
         </div>
 
         <div class="hand-section">
-          <h3 class="hand-title">Tu mano</h3>
+          <h3 class="hand-title" data-i18n="playing.hand">Tu mano</h3>
           <div class="hand-area" id="playingHand"></div>
           <p class="play-hint" id="playHint"></p>
         </div>
@@ -182,23 +188,23 @@
       <!-- ROUND END STATE -->
       <div class="game-section hidden" id="roundEndSection">
         <div class="round-end-box">
-          <h2>🏁 Fin de la Ronda</h2>
+          <h2 data-i18n="roundEnd.title">🏁 Fin de la Ronda</h2>
           <div class="results-table-wrap">
             <table class="results-table" id="resultsTable">
               <thead>
                 <tr>
-                  <th>Jugador</th>
-                  <th>Apuesta</th>
-                  <th>Trucos</th>
-                  <th>Pilis +</th>
-                  <th>Total 🌶️</th>
+                  <th data-i18n="roundEnd.player">Jugador</th>
+                  <th data-i18n="roundEnd.bet">Apuesta</th>
+                  <th data-i18n="roundEnd.tricks">Trucos</th>
+                  <th data-i18n="roundEnd.pilis">Pilis +</th>
+                  <th data-i18n="roundEnd.total">Total 🌶️</th>
                 </tr>
               </thead>
               <tbody id="resultsBody"></tbody>
             </table>
           </div>
-          <button class="btn btn-primary btn-large hidden" id="nextRoundBtn">Siguiente Ronda →</button>
-          <p class="lobby-wait hidden" id="roundWait">Esperando al anfitrión...</p>
+          <button class="btn btn-primary btn-large hidden" id="nextRoundBtn" data-i18n="roundEnd.next">Siguiente Ronda →</button>
+          <p class="lobby-wait hidden" id="roundWait" data-i18n="roundEnd.wait">Esperando al anfitrión...</p>
         </div>
       </div>
 
@@ -206,14 +212,25 @@
       <div class="game-section hidden" id="gameEndSection">
         <div class="game-end-box">
           <div class="winner-trophy">🏆</div>
-          <h2 class="winner-title">¡Partida Terminada!</h2>
+          <h2 class="winner-title" data-i18n="gameEnd.title">¡Partida Terminada!</h2>
           <p class="winner-name" id="winnerName"></p>
           <div class="final-scores" id="finalScores"></div>
-          <button class="btn btn-secondary" onclick="window.location.href='/'">Volver al inicio</button>
+          <button class="btn btn-secondary" onclick="window.location.href='/'" data-i18n="gameEnd.back">Volver al inicio</button>
         </div>
       </div>
 
     </main>
+  </div>
+
+  <!-- Reaction toast (non-intrusive, appears at top center) -->
+  <div id="reactionDisplay" style="display:none;position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:500;pointer-events:none;background:rgba(30,30,40,.88);backdrop-filter:blur(6px);color:#fff;border-radius:20px;padding:6px 16px;font-size:0.85rem;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);transition:opacity .3s"></div>
+
+  <!-- Reactions panel (floating bottom-right) -->
+  <div id="reactionsContainer" style="position:fixed;bottom:16px;right:16px;z-index:400;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+    <div id="reactionsMenu" style="display:none;background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:10px;display:none;flex-direction:column;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,.3)">
+      <!-- filled by JS -->
+    </div>
+    <button id="reactionsToggle" style="width:44px;height:44px;border-radius:50%;background:var(--bg-panel);border:1px solid var(--border);font-size:1.3rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:transform .15s" title="Enviar reacción">😄</button>
   </div>
 
   <!-- Toast notification -->
@@ -240,6 +257,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/i18n.js"></script>
   <script src="/js/game.js"></script>
 </body>
 </html>

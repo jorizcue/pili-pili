@@ -566,6 +566,17 @@ io.on('connection', (socket) => {
     console.log(`[Bot] Removed bot ${botId} from ${roomId}`);
   });
 
+  socket.on('sendReaction', ({ reactionKey } = {}) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    const { room, roomId, playerId } = found;
+    const player = room.game.players.find(p => p.id === playerId);
+    if (!player || player.isBot) return;
+    // Only emit if game is in progress (not lobby)
+    if (room.game.state === 'lobby') return;
+    io.to(roomId).emit('reaction', { playerName: player.name, reactionKey: reactionKey || 'letsgo' });
+  });
+
   socket.on('disconnect', () => {
     console.log(`[-] Socket disconnected: ${socket.id}`);
 
