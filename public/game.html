@@ -113,7 +113,7 @@
           <div class="hand-area" id="passingHand"></div>
 
           <div class="passing-waiting hidden" id="passingWaiting">
-            <div class="pass-sent-msg">✅ ¡Carta enviada! Esperando a los demás...</div>
+            <div class="pass-sent-msg" data-i18n="pass.sent">✅ ¡Carta enviada! Esperando a los demás...</div>
             <div class="pass-progress" id="passProgress"></div>
           </div>
 
@@ -174,7 +174,7 @@
 
         <!-- Manos rivales (solo en modo Manos Abiertas) -->
         <div class="opponents-section hidden" id="playingOpponents">
-          <h3 class="hand-title">👁️ Manos de los demás jugadores</h3>
+          <h3 class="hand-title" data-i18n="playing.opponents">👁️ Manos de los demás jugadores</h3>
           <div id="playingOpponentsHands"></div>
         </div>
 
@@ -240,18 +240,18 @@
   <div id="cosmeticsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;overflow-y:auto;padding:20px">
     <div style="max-width:520px;margin:40px auto;background:var(--bg-panel);border-radius:16px;padding:28px 24px;position:relative;border:1px solid var(--border)">
       <button onclick="closeCosmeticsModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1">✕</button>
-      <h2 style="margin:0 0 4px;font-size:1.2rem">🎨 Cosméticos de perfil</h2>
-      <p style="color:var(--text-muted);font-size:.82rem;margin:0 0 20px">Personaliza tu avatar y título. Se desbloquean jugando.</p>
+      <h2 style="margin:0 0 4px;font-size:1.2rem" data-i18n="cosmetics.title">🎨 Cosméticos de perfil</h2>
+      <p style="color:var(--text-muted);font-size:.82rem;margin:0 0 20px" data-i18n="cosmetics.subtitle">Personaliza tu avatar y título. Se desbloquean jugando.</p>
 
-      <h3 style="font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px">Avatar</h3>
+      <h3 style="font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px" data-i18n="cosmetics.avatars">Avatar</h3>
       <div id="avatarCatalog" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px"></div>
 
-      <h3 style="font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px">Título</h3>
+      <h3 style="font-size:.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px" data-i18n="cosmetics.titles">Título</h3>
       <div id="titleCatalog" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
 
       <!-- Ko-fi reminder -->
       <div style="margin-top:20px;padding:12px 14px;background:rgba(255,94,91,.08);border:1px solid rgba(255,94,91,.25);border-radius:10px;font-size:.8rem;color:var(--text-muted);text-align:center">
-        ☕ ¿Te gusta PochaSet? <a href="https://ko-fi.com/pochaset" target="_blank" style="color:#ff5e5b;font-weight:600">Invítame a un café en Ko-fi</a> y apoya el proyecto.
+        ☕ <span id="cosmeticsKofiMsg" data-i18n-kofi="cosmetics.kofiMsg">¿Te gusta PochaSet? <a href="https://ko-fi.com/pochaset" target="_blank" style="color:#ff5e5b;font-weight:600">Invítame a un café en Ko-fi</a> y apoya el proyecto.</span>
       </div>
     </div>
   </div>

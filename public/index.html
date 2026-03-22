@@ -38,8 +38,8 @@
     <!-- Auth bar -->
     <div class="auth-bar" id="authBar">
       <div id="authGuest" class="auth-guest">
-        <button class="btn btn-sm btn-secondary" id="loginBtn">Iniciar sesión</button>
-        <button class="btn btn-sm btn-primary" id="registerBtn">Registrarse</button>
+        <button class="btn btn-sm btn-secondary" id="loginBtn" data-i18n="home.loginBtn">Iniciar sesión</button>
+        <button class="btn btn-sm btn-primary" id="registerBtn" data-i18n="home.registerBtn">Registrarse</button>
       </div>
       <div id="authUser" class="auth-user hidden">
         <span class="auth-user-info">
@@ -47,7 +47,7 @@
           <span id="authNickname"></span>
           <span class="auth-elo-badge" id="authEloBadge"></span>
         </span>
-        <button class="btn btn-sm btn-ghost" id="logoutBtn">Salir</button>
+        <button class="btn btn-sm btn-ghost" id="logoutBtn" data-i18n="home.logoutBtn">Salir</button>
       </div>
     </div>
 
@@ -114,11 +114,12 @@
     <div class="card-panel">
       <!-- Si no está logado: input libre de nombre -->
       <div class="form-group" id="nameInputGroup">
-        <label for="playerName">Tu nombre</label>
+        <label for="playerName" data-i18n="home.yourName">Tu nombre</label>
         <input
           type="text"
           id="playerName"
           placeholder="¿Cómo te llamas?"
+          data-i18n-placeholder="home.yourNamePlaceholder"
           maxlength="20"
           autocomplete="off"
           autofocus
@@ -134,35 +135,35 @@
           <div id="nameLoggedNick" style="font-weight:700;font-size:1rem;color:var(--text-primary)"></div>
           <div id="nameLoggedLevel" style="font-size:0.75rem;color:var(--text-muted)"></div>
         </div>
-        <span style="margin-left:auto;font-size:0.72rem;color:var(--text-muted);font-style:italic">Jugando como usuario registrado</span>
+        <span style="margin-left:auto;font-size:0.72rem;color:var(--text-muted);font-style:italic" data-i18n="home.playingAs">Jugando como usuario registrado</span>
       </div>
 
       <div class="actions-split">
         <div class="action-block">
-  <h2>Crear sala</h2>
-  <p class="action-desc">Empieza una nueva partida y comparte el código con tus amigos.</p>
+  <h2 data-i18n="home.createRoom">Crear sala</h2>
+  <p class="action-desc" data-i18n="home.createDesc">Empieza una nueva partida y comparte el código con tus amigos.</p>
   <div class="form-group" style="margin-bottom:0">
-    <label for="roomName" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:600">Nombre de la sala (opcional)</label>
-    <input type="text" id="roomName" placeholder="Ej: La partida del viernes" maxlength="30" autocomplete="off" style="font-size:15px;padding:8px 12px" />
+    <label for="roomName" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:600" data-i18n="home.roomNameLabel">Nombre de la sala (opcional)</label>
+    <input type="text" id="roomName" placeholder="Ej: La partida del viernes" data-i18n-placeholder="home.roomNamePlaceholder" maxlength="30" autocomplete="off" style="font-size:15px;padding:8px 12px" />
   </div>
   <div class="room-type-toggle">
     <label class="toggle-option">
       <input type="radio" name="roomType" value="public" checked>
-      <span>🌐 Pública</span>
+      <span data-i18n="home.radioPublic">🌐 Pública</span>
     </label>
     <label class="toggle-option">
       <input type="radio" name="roomType" value="private">
-      <span>🔒 Privada</span>
+      <span data-i18n="home.radioPrivate">🔒 Privada</span>
     </label>
   </div>
-  <button class="btn btn-primary" id="createBtn">Crear sala</button>
+  <button class="btn btn-primary" id="createBtn" data-i18n="home.createBtn">Crear sala</button>
 </div>
 
         <div class="divider-v"></div>
 
         <div class="action-block">
-          <h2>Unirse a sala</h2>
-          <p class="action-desc">Introduce el código de 4 letras para unirte a una partida.</p>
+          <h2 data-i18n="home.joinRoom">Unirse a sala</h2>
+          <p class="action-desc" data-i18n="home.joinDesc">Introduce el código de 4 letras para unirte a una partida.</p>
           <div class="join-row">
             <input
               type="text"
@@ -172,7 +173,7 @@
               autocomplete="off"
               class="room-code-input"
             />
-            <button class="btn btn-secondary" id="joinBtn">Unirse</button>
+            <button class="btn btn-secondary" id="joinBtn" data-i18n="home.joinBtn">Unirse</button>
           </div>
         </div>
       </div>
@@ -183,18 +184,18 @@
     <!-- Public rooms -->
     <div class="public-rooms-panel" id="publicRoomsPanel">
       <div class="public-rooms-header">
-        <h3>🌐 Salas públicas</h3>
+        <h3 data-i18n="home.publicRoomsTitle">🌐 Salas públicas</h3>
         <button class="refresh-btn" id="refreshBtn" title="Actualizar">🔄</button>
       </div>
       <div id="publicRoomsList">
-        <p class="no-rooms-msg">Cargando salas...</p>
+        <p class="no-rooms-msg" id="roomsLoading">Cargando salas...</p>
       </div>
       <p class="refresh-hint" id="refreshHint"></p>
     </div>
 
     <div class="rules-summary">
       <details>
-        <summary class="rules-summary-title">¿Cómo se juega?</summary>
+        <summary class="rules-summary-title" data-i18n="home.howToPlay">¿Cómo se juega?</summary>
         <div class="rules-body">
           <div class="rules-section">
             <h4>Reglas básicas</h4>
@@ -417,7 +418,7 @@
 
     function getPlayerName() {
       const name = playerNameInput.value.trim();
-      if (!name) { showError('Ingresa tu nombre primero'); return null; }
+      if (!name) { showError(t('home.nameRequired')); return null; }
       return name;
     }
 
@@ -438,7 +439,7 @@
       const name = getPlayerName();
       if (!name) return;
       const code = roomCodeInput.value.trim().toUpperCase();
-      if (code.length !== 4) { showError('El código de sala debe tener 4 letras'); return; }
+      if (code.length !== 4) { showError(t('home.codeLength')); return; }
       sessionStorage.setItem('playerName', name);
       sessionStorage.setItem('roomCode', code);
       sessionStorage.setItem('action', 'join');
@@ -472,18 +473,20 @@
         const rooms = await resp.json();
         const list = document.getElementById('publicRoomsList');
         if (rooms.length === 0) {
-          list.innerHTML = '<p class="no-rooms-msg">No hay salas públicas disponibles ahora mismo</p>';
+          list.innerHTML = `<p class="no-rooms-msg">${t('home.noRooms')}</p>`;
         } else {
           list.innerHTML = '';
           for (const room of rooms) {
             const item = document.createElement('div');
             item.className = 'public-room-item';
+            const roomLabel = room.roomName !== room.roomId ? escHtml(room.roomName) : t('home.roomOf', { name: escHtml(room.hostName) });
+            const playerLabel = room.playerCount !== 1 ? t('home.nPlayersPlural', { n: room.playerCount }) : t('home.nPlayers', { n: room.playerCount });
             item.innerHTML = `
               <div class="public-room-info">
-                <span class="public-room-name">${room.roomName !== room.roomId ? escHtml(room.roomName) : 'Sala de ' + escHtml(room.hostName)}</span>
-                <span class="public-room-meta">${room.playerCount} jugador${room.playerCount !== 1 ? 'es' : ''} · ${room.ageStr}</span>
+                <span class="public-room-name">${roomLabel}</span>
+                <span class="public-room-meta">${playerLabel} · ${room.ageStr}</span>
               </div>
-              <button class="btn btn-sm btn-secondary" onclick="joinPublicRoom('${room.roomId}')">Unirse</button>
+              <button class="btn btn-sm btn-secondary" onclick="joinPublicRoom('${room.roomId}')">${t('home.joinBtn2')}</button>
             `;
             list.appendChild(item);
           }
@@ -491,7 +494,7 @@
         refreshCountdown = 15;
         updateRefreshHint();
       } catch (e) {
-        document.getElementById('refreshHint').textContent = 'Error al cargar salas';
+        document.getElementById('refreshHint').textContent = t('home.errorLoadingRooms');
       }
     }
 
@@ -506,7 +509,7 @@
     }
 
     function updateRefreshHint() {
-      document.getElementById('refreshHint').textContent = `Actualiza en ${refreshCountdown}s`;
+      document.getElementById('refreshHint').textContent = t('home.refreshIn', { n: refreshCountdown });
     }
 
     function startRefreshCycle() {
@@ -528,6 +531,12 @@
 
     loadPublicRooms();
     startRefreshCycle();
+
+    // Re-render dynamic content when language changes
+    window.onLangChange = function() {
+      loadPublicRooms();
+      updateRefreshHint();
+    };
   </script>
 </body>
 </html>

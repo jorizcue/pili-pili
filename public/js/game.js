@@ -49,7 +49,7 @@ document.getElementById('cosmeticsOverlay')?.addEventListener('click', (e) => {
 async function loadCosmeticsModal() {
   const avatarEl = document.getElementById('avatarCatalog');
   const titleEl  = document.getElementById('titleCatalog');
-  avatarEl.innerHTML = '<span style="color:var(--text-muted);font-size:.83rem">Cargando...</span>';
+  avatarEl.innerHTML = `<span style="color:var(--text-muted);font-size:.83rem">${t('misc.loading')}</span>`;
   titleEl.innerHTML  = '';
 
   try {
@@ -97,7 +97,7 @@ async function loadCosmeticsModal() {
 
     // ——— Títulos ————————————————————————————
     // Opción "Sin título"
-    const noTitleRow = _makeTitleRow(null, '— Sin título', 'No mostrar título', cosmetics.equippedTitle === null, true, cosmetics);
+    const noTitleRow = _makeTitleRow(null, t('cosmetics.noTitle'), t('cosmetics.noTitle'), cosmetics.equippedTitle === null, true, cosmetics);
     titleEl.appendChild(noTitleRow);
 
     for (const t of catalog.titles) {
@@ -108,7 +108,7 @@ async function loadCosmeticsModal() {
     }
 
   } catch (e) {
-    avatarEl.innerHTML = `<span style="color:#ef4444;font-size:.83rem">Error cargando cosméticos: ${e.message}</span>`;
+    avatarEl.innerHTML = `<span style="color:#ef4444;font-size:.83rem">${t('misc.errorCosmetics', { msg: e.message })}</span>`;
   }
 }
 
@@ -126,7 +126,7 @@ function _makeTitleRow(id, text, desc, equipped, unlocked, cosmetics) {
 
   const badge = document.createElement('span');
   badge.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,.2);color:#f59e0b;white-space:nowrap';
-  badge.textContent = equipped ? '✓ Equipado' : '';
+  badge.textContent = equipped ? t('cosmetics.equipped') : '';
   badge.style.display = equipped ? '' : 'none';
 
   row.appendChild(textSpan);
@@ -379,7 +379,7 @@ socket.on('error', ({ message }) => {
 });
 
 socket.on('disconnect', () => {
-  showToast('Conexión perdida. Reconectando...', 'error');
+  showToast(t('misc.disconnected'), 'error');
 });
 
 socket.on('connect', () => {
@@ -393,7 +393,7 @@ socket.on('joinPending', ({ roomId: rid, roomName }) => {
   for (const s of Object.values(sections)) s.classList.add('hidden');
   document.getElementById('pendingSection').classList.remove('hidden');
   document.getElementById('pendingRoomInfo').textContent =
-    `Sala: ${roomName || rid} — Esperando que el anfitrión apruebe tu solicitud.`;
+    t('pending.roomWaiting', { name: roomName || rid });
 });
 
 socket.on('joinRejected', ({ message }) => {
@@ -597,7 +597,7 @@ function renderLobby(state) {
         const label = document.createElement('label');
         label.className = 'config-mode-option';
         const checked = !enabledFamilies || enabledFamilies.includes(fam.key);
-        label.innerHTML = `<input type="checkbox" name="mode" value="${fam.key}" ${checked ? 'checked' : ''}> ${escHtml(fam.label)}`;
+        label.innerHTML = `<input type="checkbox" name="mode" value="${fam.key}" ${checked ? 'checked' : ''}> ${escHtml(t('mode.family.' + fam.key) || fam.label)}`;
         cfgModes.appendChild(label);
       }
       // Deck size
@@ -716,14 +716,14 @@ document.getElementById('copyLinkBtn').addEventListener('click', () => {
   if (navigator.share) {
     navigator.share({
       title: 'PochaSet 🌶️',
-      text: `¡Únete a mi partida de PochaSet! Código: ${roomId}`,
+      text: t('misc.joinInvite', { code: roomId }),
       url,
     }).catch(() => {});
   } else {
     navigator.clipboard.writeText(url).then(() => {
-      showToast('Enlace copiado al portapapeles', 'success');
+      showToast(t('misc.linkCopied'), 'success');
     }).catch(() => {
-      showToast(`Enlace: ${url}`);
+      showToast(`Link: ${url}`);
     });
   }
 });
@@ -736,10 +736,10 @@ function renderPassing(state) {
   const mission = state.mission;
   const passPhase = state.passPhase;
 
-  document.getElementById('passMissionName').textContent = mission.name;
-  document.getElementById('passMissionDesc').textContent = mission.desc;
+  document.getElementById('passMissionName').textContent = t('mode.' + mission.rule + '.name') || mission.name;
+  document.getElementById('passMissionDesc').textContent = t('mode.' + mission.rule + '.desc', { n: mission.cardsPerPlayer, s: mission.cardsPerPlayer !== 1 ? 's' : '' }) || mission.desc;
   document.getElementById('passRoundInfo').textContent =
-    `Ronda ${state.round} de ${state.totalRounds} · ${mission.cardsPerPlayer} cartas por jugador`;
+    t('betting.round', { r: state.round, total: state.totalRounds, n: mission.cardsPerPlayer, s: mission.cardsPerPlayer !== 1 ? 's' : '' });
 
   const statusEl     = document.getElementById('passingStatus');
   const instructionEl = document.getElementById('passInstruction');
@@ -750,11 +750,11 @@ function renderPassing(state) {
 
   // Instrucción dinámica con conteo
   instructionEl.querySelector('p').innerHTML =
-    `👈 Elige <strong>${passPhase.passCount}</strong> carta(s) para pasar al jugador de tu <strong>izquierda</strong>
-     <br><small style="color:var(--text-muted)">${passPhase.myPassedCount}/${passPhase.passCount} elegidas</small>`;
+    `${t('pass.instructionHtml', { n: passPhase.passCount })}
+     <br><small style="color:var(--text-muted)">${t('pass.chosen', { chosen: passPhase.myPassedCount, n: passPhase.passCount })}</small>`;
 
   // Progreso general
-  progressEl.textContent = `${passPhase.passedCount} de ${passPhase.totalPlayers} jugadores han elegido`;
+  progressEl.textContent = t('pass.progress', { done: passPhase.passedCount, total: passPhase.totalPlayers });
 
   // Estado de cada jugador
   playersStatus.innerHTML = '';
@@ -770,13 +770,13 @@ function renderPassing(state) {
 
   if (passPhase.myHasPassed) {
     // Ya elegí — mostrar espera
-    statusEl.innerHTML = '<span class="pass-ready">✅ ¡Carta(s) enviada(s)!</span>';
+    statusEl.innerHTML = `<span class="pass-ready">${t('pass.ready')}</span>`;
     instructionEl.classList.add('hidden');
     handArea.innerHTML = '';
     waitingEl.classList.remove('hidden');
   } else {
     // Aún no elijo — mostrar mis cartas
-    statusEl.innerHTML = '<span class="current-better">¡Elige la(s) carta(s) que quieres pasar!</span>';
+    statusEl.innerHTML = `<span class="current-better">${t('pass.choose')}</span>`;
     instructionEl.classList.remove('hidden');
     waitingEl.classList.add('hidden');
     handArea.innerHTML = '';
@@ -784,7 +784,7 @@ function renderPassing(state) {
     for (let i = 0; i < state.myCards.length; i++) {
       const idx = i;
       const cardEl = makeCardFace(state.myCards[i], true);
-      cardEl.title = 'Clic para pasar esta carta';
+      cardEl.title = t('pass.cardTooltip');
       cardEl.addEventListener('click', () => {
         SFX.pass();
         socket.emit('passCard', { cardIndex: idx });
@@ -802,10 +802,11 @@ let maxBet = 0;
 
 function renderBetting(state) {
   const mission = state.mission;
-  document.getElementById('missionName').textContent = mission.name;
-  document.getElementById('missionDesc').textContent = mission.desc;
+  const _ms = mission.cardsPerPlayer !== 1 ? 's' : '';
+  document.getElementById('missionName').textContent = t('mode.' + mission.rule + '.name') || mission.name;
+  document.getElementById('missionDesc').textContent = t('mode.' + mission.rule + '.desc', { n: mission.cardsPerPlayer, s: _ms }) || mission.desc;
   document.getElementById('roundInfo').textContent =
-    t('betting.round', {r: state.round, total: state.totalRounds, n: mission.cardsPerPlayer, s: mission.cardsPerPlayer > 1 ? 's' : ''});
+    t('betting.round', { r: state.round, total: state.totalRounds, n: mission.cardsPerPlayer, s: _ms });
 
   // Current better status
   const bettingStatus = document.getElementById('bettingStatus');
@@ -898,7 +899,7 @@ function renderBetting(state) {
     betValue = 0;
     if (betValue === currentForbiddenBet) betValue = betValue < maxBet ? betValue + 1 : maxBet - 1 >= 0 ? maxBet - 1 : 0;
 
-    document.getElementById('betHint').textContent = `Puedes apostar entre 0 y ${maxBet}`;
+    document.getElementById('betHint').textContent = t('betting.rangeHint', { max: maxBet });
     updateBetDisplay();
   } else {
     currentForbiddenBet = null;
@@ -917,7 +918,7 @@ function updateBetDisplay() {
 
   if (currentForbiddenBet !== null) {
     forbiddenMsg.classList.remove('hidden');
-    forbiddenMsg.textContent = `❌ No puedes apostar ${currentForbiddenBet} — eres el último en apostar y la suma total no puede ser igual al número de cartas`;
+    forbiddenMsg.textContent = t('betting.forbiddenMsg', { n: currentForbiddenBet });
     if (isForbidden) {
       forbiddenMsg.classList.add('forbidden-active');
       SFX.forbidden();
@@ -960,8 +961,8 @@ document.getElementById('confirmBetBtn').addEventListener('click', () => {
 
 function renderPlaying(state) {
   const mission = state.mission;
-  document.getElementById('playMissionName').textContent = mission.name;
-  document.getElementById('playMissionDesc').textContent = mission.desc;
+  document.getElementById('playMissionName').textContent = t('mode.' + mission.rule + '.name') || mission.name;
+  document.getElementById('playMissionDesc').textContent = t('mode.' + mission.rule + '.desc', { n: mission.cardsPerPlayer, s: mission.cardsPerPlayer !== 1 ? 's' : '' }) || mission.desc;
 
   // Trick cards
   const trickCards = document.getElementById('trickCards');
@@ -1011,7 +1012,7 @@ function renderPlaying(state) {
     chip.innerHTML = `
       <span class="chip-name">${p.level ? p.level.emoji + ' ' : ''}${escHtml(p.name)}</span>
       <span class="chip-bet">${t('playing.tricks', {won: p.tricksWon, bet: p.bet ?? 0})}</span>
-      <span class="chip-bet">Cartas: ${p.cardCount}</span>
+      <span class="chip-bet">${t('playing.cards', {n: p.cardCount})}</span>
     `;
     chipsRow.appendChild(chip);
   }
@@ -1054,11 +1055,11 @@ function renderPlaying(state) {
     const backEl = makeCardBack();
     handArea.appendChild(backEl);
     if (isMyTurn) {
-      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Juega tu carta (¡no sabes cuál es!)</span>';
+      playHint.innerHTML = `<span class="it-is-your-turn">${t('playing.turnIndian')}</span>`;
       backEl.classList.add('playable-back');
       backEl.addEventListener('click', () => playCard(0));
     } else if (currentPlayer) {
-      playHint.textContent = `Esperando a ${currentPlayer.name}...`;
+      playHint.textContent = t('playing.waitingName', { name: currentPlayer.name });
     } else {
       playHint.textContent = '';
     }
@@ -1083,9 +1084,9 @@ function renderPlaying(state) {
     }
 
     if (isMyTurn) {
-      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Elige un dorso — ¡no sabes qué carta es!</span>';
+      playHint.innerHTML = `<span class="it-is-your-turn">${t('playing.turnBlind')}</span>`;
     } else if (currentPlayer) {
-      playHint.textContent = `Esperando a ${currentPlayer.name}... (tampoco sabe qué juega)`;
+      playHint.textContent = t('playing.waitingBlind', { name: currentPlayer.name });
     } else {
       playHint.textContent = '';
     }
@@ -1102,9 +1103,9 @@ function renderPlaying(state) {
     }
 
     if (isMyTurn) {
-      playHint.innerHTML = '<span class="it-is-your-turn">¡Es tu turno! Selecciona una carta</span>';
+      playHint.innerHTML = `<span class="it-is-your-turn">${t('playing.turnNormal')}</span>`;
     } else if (currentPlayer) {
-      playHint.textContent = `Esperando a ${currentPlayer.name}...`;
+      playHint.textContent = t('playing.waitingName', { name: currentPlayer.name });
     } else {
       playHint.textContent = '';
     }
@@ -1155,7 +1156,7 @@ function renderRoundEnd(state) {
   if (state.myId === state.hostId) {
     nextBtn.classList.remove('hidden');
     waitMsg.classList.add('hidden');
-    nextBtn.textContent = state.round >= state.totalRounds ? 'Ver resultados finales' : 'Siguiente Ronda →';
+    nextBtn.textContent = state.round >= state.totalRounds ? t('roundEnd.viewFinal') : t('roundEnd.next');
   } else {
     nextBtn.classList.add('hidden');
     waitMsg.classList.remove('hidden');
@@ -1226,7 +1227,7 @@ function makeCardFace(card, playable) {
   if (card.isWild) {
     el.innerHTML = `
       <div class="card-wild-icon">🌶️</div>
-      <div class="card-wild-label">Comodín</div>
+      <div class="card-wild-label">${t('card.wild')}</div>
     `;
   } else {
     el.innerHTML = `<div class="card-value">${card.value}</div>`;
